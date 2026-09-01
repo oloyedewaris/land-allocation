@@ -6,6 +6,7 @@ import type {
   EstateFilters,
   EstateModel,
   EstateUnit,
+  BackendAllocation,
   ShadingMode,
   UnitStatus,
   ViewMode,
@@ -14,29 +15,12 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
 
-const model = { ...siteJson, plots: unitsJson } as unknown as EstateModel;
-const storageKey = "ibefun-unit-statuses-v2";
-
-function initialStatuses(units: EstateUnit[]) {
-  const statuses: Record<string, UnitStatus> = {};
-  let seed = 20260805;
-  const random = () => {
-    seed |= 0;
-    seed = (seed + 0x6d2b79f5) | 0;
-    let value = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-    value = (value + Math.imul(value ^ (value >>> 7), 61 | value)) ^ value;
-    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
-  };
-  for (const unit of units)
-    statuses[unit.id] = random() < 0.405 ? "allocated" : "available";
-  return statuses;
-}
+const localModel = { ...siteJson, plots: unitsJson } as unknown as EstateModel;
 
 const defaultFilters: EstateFilters = {
   status: "all",
@@ -72,8 +56,23 @@ interface EstateContextValue {
 
 const EstateContext = createContext<EstateContextValue | null>(null);
 
-export function EstateProvider({ children }: { children: ReactNode }) {
-  const [statuses, setStatuses] = useState(() => initialStatuses(model.plots));
+export function EstateProvider({ children, allocations }: { children: ReactNode; allocations: BackendAllocation[] }) {
+  const model = useMemo<EstateModel>(() => {
+    const allocationsByName = new Map(allocations.map((allocation) => [allocation.name, allocation]));
+    return {
+      ...localModel,
+      plots: localModel.plots.map((unit) => ({
+        ...unit,
+        allocation: allocationsByName.get(unit.id),
+      })),
+    };
+  }, [allocations]);
+  const apiStatuses = useMemo(() => Object.fromEntries(model.plots.map((unit) => [
+    unit.id,
+    unit.allocation?.allocated ? "allocated" : "available",
+  ])) as Record<string, UnitStatus>, [model.plots]);
+  const [statusOverrides, setStatusOverrides] = useState<Record<string, UnitStatus>>({});
+  const statuses = useMemo(() => ({ ...apiStatuses, ...statusOverrides }), [apiStatuses, statusOverrides]);
   const [filters, setFilters] = useState(defaultFilters);
   const [selectedId, selectUnit] = useState<string | null>(null);
   const [admin, setAdmin] = useState(false);
@@ -81,20 +80,8 @@ export function EstateProvider({ children }: { children: ReactNode }) {
   const [view, setView] = useState<ViewMode>("aerial");
   const [focusedAmenity, setFocusedAmenity] = useState<number | null>(null);
 
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) setStatuses(JSON.parse(saved));
-    } catch {
-      /* use defaults */
-    }
-  }, []);
-  useEffect(() => {
-    localStorage.setItem(storageKey, JSON.stringify(statuses));
-  }, [statuses]);
-
   const setUnitStatus = useCallback((id: string, status: UnitStatus) => {
-    setStatuses((current) => ({ ...current, [id]: status }));
+    setStatusOverrides((current) => ({ ...current, [id]: status }));
   }, []);
 
   const visibleUnits = useMemo(
@@ -113,12 +100,12 @@ export function EstateProvider({ children }: { children: ReactNode }) {
             (filters.hatched === "hatched" ? unit.hx : !unit.hx))
         );
       }),
-    [filters, statuses],
+    [filters, statuses, model.plots],
   );
 
   const selectedUnit = useMemo(
     () => model.plots.find((unit) => unit.id === selectedId),
-    [selectedId],
+    [selectedId, model.plots],
   );
   const counts = useMemo(
     () =>
@@ -129,7 +116,7 @@ export function EstateProvider({ children }: { children: ReactNode }) {
         },
         { available: 0, allocated: 0, reserved: 0 },
       ),
-    [statuses],
+    [statuses, model.plots],
   );
 
   return (

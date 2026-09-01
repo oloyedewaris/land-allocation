@@ -14,6 +14,7 @@ import { Canvas, type ThreeEvent, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useState } from "react";
 import * as THREE from "three";
 import { useEstate } from "./EstateProvider";
+import { UnitDetailsPanel } from "./UnitDetailsPanel";
 
 const WORLD_SCALE = 0.1;
 const ROAD_WIDTHS = [13.5, 11.5, 10, 8.5];
@@ -311,10 +312,6 @@ export function EstateCanvas() {
   const {
     view,
     setView,
-    selectedUnit,
-    statuses,
-    admin,
-    setUnitStatus,
     selectUnit,
   } = useEstate();
   const [canvasKey, setCanvasKey] = useState(0);
@@ -357,49 +354,7 @@ export function EstateCanvas() {
           </button>
         ))}
       </div>
-      {selectedUnit && (
-        <section className="unit-detail">
-          <button className="detail-close" onClick={() => selectUnit(null)}>
-            ×
-          </button>
-          <h2>{selectedUnit.id}</h2>
-          <strong className={`status ${statuses[selectedUnit.id]}`}>
-            {statuses[selectedUnit.id]}
-          </strong>
-          <dl>
-            <dt>Sector</dt>
-            <dd>{selectedUnit.s}</dd>
-            <dt>Plot no.</dt>
-            <dd>{selectedUnit.n}</dd>
-            <dt>Area</dt>
-            <dd>{selectedUnit.a.toLocaleString()} m²</dd>
-            <dt>Dimensions</dt>
-            <dd>{selectedUnit.dim}</dd>
-            <dt>Local X</dt>
-            <dd>{selectedUnit.c[0].toFixed(2)}</dd>
-            <dt>Local Y</dt>
-            <dd>{selectedUnit.c[1].toFixed(2)}</dd>
-            <dt>Land use</dt>
-            <dd>{selectedUnit.lu ?? "Unclassified"}</dd>
-            <dt>Schedule area</dt>
-            <dd>{selectedUnit.oa.toLocaleString()} m²</dd>
-          </dl>
-          {admin && (
-            <div className="status-editor">
-              {(["available", "allocated", "reserved"] as const).map(
-                (status) => (
-                  <button
-                    key={status}
-                    onClick={() => setUnitStatus(selectedUnit.id, status)}
-                  >
-                    Mark {status}
-                  </button>
-                ),
-              )}
-            </div>
-          )}
-        </section>
-      )}
+      <UnitDetailsPanel />
     </main>
   );
 }

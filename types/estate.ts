@@ -3,6 +3,21 @@ export type UnitStatus = "available" | "allocated" | "reserved";
 export type ViewMode = "map" | "plan" | "aerial";
 export type ShadingMode = "realistic" | "status";
 
+export interface AllocationOwner {
+  [key: string]: unknown;
+}
+
+export interface BackendAllocation {
+  id: number;
+  name: string;
+  unit: number;
+  unit_name: string;
+  allocated: boolean;
+  generating_revenue: boolean;
+  archived: boolean;
+  owner: AllocationOwner | null;
+}
+
 export interface EstateMeta {
   estate: string;
   location: string;
@@ -33,6 +48,7 @@ export interface EstateUnit {
   lu?: string;
   hx?: number;
   f?: string[];
+  allocation?: BackendAllocation;
 }
 
 export interface AmenityParcel {

@@ -2,10 +2,11 @@ import { EstateCanvas } from "./EstateCanvas";
 import { EstateHeader } from "./EstateHeader";
 import { EstateProvider } from "./EstateProvider";
 import { EstateSidebar } from "./EstateSidebar";
+import type { BackendAllocation } from "@/types/estate";
 
-export function EstateApplication() {
+export function EstateApplication({ allocations }: { allocations: BackendAllocation[] }) {
   return (
-    <EstateProvider>
+    <EstateProvider allocations={allocations}>
       <div className="estate-app">
         <EstateHeader />
         <EstateSidebar />
