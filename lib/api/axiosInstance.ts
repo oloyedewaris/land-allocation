@@ -1,6 +1,5 @@
 import axios from "axios";
-import { BaseURL, TOKEN_SESSION_KEY } from "../constants/auth-keys";
-import { getSession } from "../session/sessionmanagers";
+import { BaseURL } from "../constants/auth-keys";
 import { store_name } from "../constants/store-name";
 
 export const axiosInstance = axios.create({
