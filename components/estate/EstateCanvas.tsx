@@ -308,12 +308,8 @@ function EstateScene() {
   );
 }
 
-export function EstateCanvas() {
-  const {
-    view,
-    setView,
-    selectUnit,
-  } = useEstate();
+export function EstateCanvas({ esubDetails }: { esubDetails: any }) {
+  const { view, setView, selectUnit } = useEstate();
   const [canvasKey, setCanvasKey] = useState(0);
   return (
     <main className="estate-stage">
@@ -354,7 +350,7 @@ export function EstateCanvas() {
           </button>
         ))}
       </div>
-      <UnitDetailsPanel />
+      <UnitDetailsPanel esubDetails={esubDetails} />
     </main>
   );
 }

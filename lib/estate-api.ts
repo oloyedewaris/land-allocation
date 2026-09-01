@@ -1,7 +1,8 @@
 import type { BackendAllocation } from "@/types/estate";
+import { BaseURL, LOCAL_ESUB_DOMAIN } from "./constants/auth-keys";
 
-const allocationsUrl =
-  "https://dev.matadortrust.com/v2/developers/project-allocations-with-owner/3244/";
+const allocationsUrl = `${BaseURL}/developers/project-allocations-with-owner/3244/`;
+const storeCheckUrl = `${BaseURL}/billing/esub/domain/${encodeURIComponent(LOCAL_ESUB_DOMAIN)}/`;
 
 interface AllocationResponse {
   message: string;
@@ -26,4 +27,15 @@ export async function getProjectAllocations(): Promise<BackendAllocation[]> {
   }
 
   return payload.data;
+}
+
+export async function getEsubDetails(): Promise<any> {
+  const response = await fetch(storeCheckUrl, { cache: "no-store" });
+  if (!response.ok)
+    throw new Error(
+      `Could not load apartment allocations (${response.status} ${response.statusText}).`,
+    );
+
+  const payload = (await response.json()) as any;
+  return payload;
 }
