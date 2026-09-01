@@ -1092,3 +1092,62 @@
     border-left: 0;
   }
 }
+
+/*
+ * The overview drawer and every reservation step share one viewport shell.
+ * Keep this after the imported responsive rules so changing steps cannot put
+ * the panel back into the Three.js stage's document flow.
+ */
+body.reservation-flow-active {
+  overflow: hidden;
+}
+
+.sales-panel.reservation-flow-panel {
+  position: fixed;
+  z-index: 100;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: auto;
+  width: min(390px, 100vw);
+  min-width: 0;
+  height: 100vh;
+  height: 100dvh;
+  display: block;
+  overflow: hidden;
+  overscroll-behavior: contain;
+  touch-action: auto;
+  border: 0;
+  border-left: 1px solid #d9d4c8;
+  border-bottom: 0;
+  background: #fff;
+  box-shadow: -18px 0 45px rgba(10, 14, 8, 0.22);
+  animation: reservation-panel-enter 0.2s ease-out;
+}
+
+.sales-panel.reservation-flow-panel .reservation-step {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sales-panel.reservation-flow-panel .reservation-step-scroll {
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+@keyframes reservation-panel-enter {
+  from { transform: translateX(16px); opacity: 0.96; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@media (max-width: 600px) {
+  .sales-panel.reservation-flow-panel {
+    width: 100vw;
+    max-width: none;
+  }
+}

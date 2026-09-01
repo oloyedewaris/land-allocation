@@ -159,6 +159,7 @@ export function UnitDetailsPanel({ esubDetails }: { esubDetails: any }) {
   );
 
   const project = esubDetails?.project;
+  console.log("esubDetails", esubDetails);
 
   const bundleQuery = useQuery({
     queryKey: ["fetchProjectBundles"],
@@ -169,7 +170,6 @@ export function UnitDetailsPanel({ esubDetails }: { esubDetails: any }) {
   const fetchedUnit = allUnits?.find(
     (unit: any) => unit.id === selectedUnit.allocation?.unit,
   );
-  console.log("fetchedUnit", fetchedUnit);
 
   const paymentPlansQuery = useQuery({
     queryKey: ["fetchBundlePaymentPlans"],
@@ -448,7 +448,6 @@ export function UnitDetailsPanel({ esubDetails }: { esubDetails: any }) {
   const verifyCodeMutation = useMutation({
     mutationFn: () => loginWithOTP({ email, code: verificationCode }),
     onSuccess: (res) => {
-      console.log("res?.data", res?.data);
       const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
       if (res?.data?.token) sessionStorage.setItem("token", res?.data?.token);
 
@@ -474,7 +473,7 @@ export function UnitDetailsPanel({ esubDetails }: { esubDetails: any }) {
 
   if (step === "payment-plan") {
     return (
-      <aside className="sales-panel reservation-flow-panel">
+      <aside className="unit-drawer sales-panel reservation-flow-panel">
         <PaymentPlanStep
           fetchedUnit={fetchedUnit}
           paymentPlans={paymentPlans}
@@ -491,7 +490,7 @@ export function UnitDetailsPanel({ esubDetails }: { esubDetails: any }) {
   }
   if (step === "payment-summary" && selectedPlan) {
     return (
-      <aside className="sales-panel reservation-flow-panel">
+      <aside className="unit-drawer sales-panel reservation-flow-panel">
         <PaymentSummaryStep
           fetchedUnit={fetchedUnit}
           plan={selectedPlan}
@@ -512,7 +511,7 @@ export function UnitDetailsPanel({ esubDetails }: { esubDetails: any }) {
   }
   if (step === "contact") {
     return (
-      <aside className="sales-panel reservation-flow-panel">
+      <aside className="unit-drawer sales-panel reservation-flow-panel">
         <ContactStep
           // unitNumber={unitNumber}
           email={email}
@@ -529,7 +528,7 @@ export function UnitDetailsPanel({ esubDetails }: { esubDetails: any }) {
   }
   if (step === "verification") {
     return (
-      <aside className="sales-panel reservation-flow-panel">
+      <aside className="unit-drawer sales-panel reservation-flow-panel">
         <VerificationStep
           email={email}
           code={verificationCode}
@@ -552,7 +551,7 @@ export function UnitDetailsPanel({ esubDetails }: { esubDetails: any }) {
   }
   if (step === "about-you") {
     return (
-      <aside className="sales-panel reservation-flow-panel">
+      <aside className="unit-drawer sales-panel reservation-flow-panel">
         <AboutYouStep
           values={aboutYou}
           onChange={setAboutYou}
@@ -565,7 +564,7 @@ export function UnitDetailsPanel({ esubDetails }: { esubDetails: any }) {
   }
   if (step === "next-of-kin") {
     return (
-      <aside className="sales-panel reservation-flow-panel">
+      <aside className="unit-drawer sales-panel reservation-flow-panel">
         <NextOfKinStep
           values={nextOfKin}
           onChange={setNextOfKin}
@@ -578,7 +577,7 @@ export function UnitDetailsPanel({ esubDetails }: { esubDetails: any }) {
   }
   if (step === "documents") {
     return (
-      <aside className="sales-panel reservation-flow-panel">
+      <aside className="unit-drawer sales-panel reservation-flow-panel">
         <DocumentsStep
           files={documents}
           onChange={setDocuments}
@@ -591,7 +590,7 @@ export function UnitDetailsPanel({ esubDetails }: { esubDetails: any }) {
   }
   if (step === "success" && selectedPlan) {
     return (
-      <aside className="sales-panel reservation-flow-panel">
+      <aside className="unit-drawer sales-panel reservation-flow-panel">
         <ReservationSuccess
           loading={paymentMutation.isPending}
           // propertyName={propertyName}

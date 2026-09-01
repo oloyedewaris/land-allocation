@@ -3,7 +3,7 @@ import { getStoredStoreData } from "./store-data";
 export const appWindow = typeof window !== "undefined" ? window : null;
 
 const STORE_NAME_KEY = "esub_storeName";
-export const DEFAULT_STORE_NAME = "threesixtyverse-dev";
+export const DEFAULT_STORE_NAME = "kenandbridget-dev";
 
 export function persistStoreName(storeName: string): void {
   const trimmed = storeName.trim();
@@ -19,7 +19,12 @@ const PREFIXES_HYPHEN = ["esub-"] as const;
 const PREFIXES_DOT = ["esub"] as const;
 
 function isLocalDevHost(hostname: string): boolean {
-  return hostname.includes("localhost") || hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".localhost");
+  return (
+    hostname.includes("localhost") ||
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname.endsWith(".localhost")
+  );
 }
 
 function getStoreNameFromHostname(hostname: string): string | null {
@@ -57,7 +62,10 @@ export function getStoreNameForWindow(win: Window): string {
   const hostname = win.location?.hostname ?? "";
   if (isLocalDevHost(hostname)) {
     try {
-      win.sessionStorage?.setItem(STORE_NAME_KEY, JSON.stringify(DEFAULT_STORE_NAME));
+      win.sessionStorage?.setItem(
+        STORE_NAME_KEY,
+        JSON.stringify(DEFAULT_STORE_NAME),
+      );
     } catch {
       /* ignore */
     }
@@ -103,7 +111,8 @@ export function getStoreNameForWindow(win: Window): string {
 }
 
 function getStoreNameFromUrl(): string | null {
-  if (appWindow?.location?.origin?.includes("localhost")) return DEFAULT_STORE_NAME;
+  if (appWindow?.location?.origin?.includes("localhost"))
+    return DEFAULT_STORE_NAME;
   if (!appWindow?.location?.hostname) return null;
   return getStoreNameFromHostname(appWindow.location.hostname);
 }
