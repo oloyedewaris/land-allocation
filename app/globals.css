@@ -321,7 +321,7 @@ html {
   position: relative;
   min-width: 0;
   overflow: hidden;
-  background: #1c1f22;
+  background: linear-gradient(180deg, #232529 0%, #171819 100%);
   touch-action: none
 }
 

@@ -17,7 +17,10 @@ import { useEstate } from "./EstateProvider";
 import { UnitDetailsPanel } from "./UnitDetailsPanel";
 
 const WORLD_SCALE = 0.1;
+// The source survey uses 0.252982 drawing points per metre.
+const POINTS_PER_METRE = 0.252982;
 const ROAD_WIDTHS = [13.5, 11.5, 10, 8.5];
+const LEGACY_CAMERA_POSITION: [number, number, number] = [-28.97, 37.15, 47.28];
 
 function toScene([x, z]: Point, cx: number, cz: number): [number, number] {
   return [(x - cx) * WORLD_SCALE, (z - cz) * WORLD_SCALE];
@@ -54,7 +57,7 @@ function UnitMesh({
   const geometry = useMemo(
     () =>
       new THREE.ExtrudeGeometry(makeShape(unit.r, center[0], center[1]), {
-        depth: selected ? 0.55 : status === "allocated" ? 0.34 : 0.22,
+        depth: selected ? 0.08 : status === "allocated" ? 0.05 : 0.035,
         bevelEnabled: true,
         bevelSize: 0.025,
         bevelThickness: 0.025,
@@ -83,7 +86,7 @@ function UnitMesh({
     <mesh
       geometry={geometry}
       rotation={[-Math.PI / 2, 0, 0]}
-      position={[0, hovered ? 0.58 : 0.22, 0]}
+      position={[0, hovered ? 0.14 : 0.025, 0]}
       onPointerOver={(event: ThreeEvent<PointerEvent>) => {
         event.stopPropagation();
         setHovered(true);
@@ -105,9 +108,11 @@ function UnitMesh({
         roughness={hovered ? 0.62 : 0.82}
         metalness={0.02}
       />
-      {(hovered || selected) && (
-        <Edges color={hovered ? "#fff7cf" : "#ffe36e"} lineWidth={2} threshold={12} />
-      )}
+      <Edges
+        color={hovered ? "#fff7cf" : selected ? "#ffe36e" : "#544f46"}
+        lineWidth={hovered || selected ? 2 : 0.35}
+        threshold={12}
+      />
     </mesh>
   );
 }
@@ -145,16 +150,18 @@ function Ground({ rings, center }: { rings: Point[][]; center: Point }) {
 function AmenityMesh({
   parcel,
   color,
+  name,
   center,
 }: {
   parcel: AmenityParcel;
   color: string;
+  name: string;
   center: Point;
 }) {
   const geometry = useMemo(
     () =>
       new THREE.ExtrudeGeometry(makeShape(parcel.r, center[0], center[1]), {
-        depth: 0.42,
+        depth: 0.035,
         bevelEnabled: true,
         bevelSize: 0.04,
         bevelThickness: 0.04,
@@ -162,15 +169,26 @@ function AmenityMesh({
     [parcel, center],
   );
   useEffect(() => () => geometry.dispose(), [geometry]);
-  return (
-    <mesh
-      geometry={geometry}
-      rotation={[-Math.PI / 2, 0, 0]}
-      position={[0, 0.15, 0]}
-    >
+  const centroid = useMemo(() => {
+    const point = parcel.r.reduce((sum, current) => [sum[0] + current[0] / parcel.r.length, sum[1] + current[1] / parcel.r.length] as Point, [0, 0]);
+    return toScene(point, center[0], center[1]);
+  }, [parcel, center]);
+  return <>
+    <mesh geometry={geometry} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.012, 0]}>
       <meshStandardMaterial color={color} roughness={0.78} />
     </mesh>
-  );
+    <AmenityLandmark name={name} color={color} position={centroid} />
+  </>;
+}
+
+function AmenityLandmark({ name, color, position }: { name: string; color: string; position: Point }) {
+  if (name.includes("Park") || name.includes("Playground")) {
+    return <group position={[position[0], 0.3, position[1]]}>{[-0.22, 0, 0.22].map((x, index) => <group key={x} position={[x, 0, index === 1 ? -0.14 : 0.09]}><mesh><cylinderGeometry args={[0.018, 0.025, 0.2, 5]} /><meshStandardMaterial color="#70543f" /></mesh><mesh position={[0, 0.17, 0]}><sphereGeometry args={[0.1, 7, 5]} /><meshStandardMaterial color="#527b43" /></mesh></group>)}</group>;
+  }
+  if (name.includes("Pool")) {
+    return <group position={[position[0], 0.34, position[1]]}><mesh><boxGeometry args={[0.7, 0.06, 0.38]} /><meshStandardMaterial color="#52a0bd" roughness={0.3} /></mesh><mesh position={[0.48, 0.2, 0]}><boxGeometry args={[0.28, 0.4, 0.32]} /><meshStandardMaterial color="#e9e4d9" /></mesh></group>;
+  }
+  return <group position={[position[0], 0.39, position[1]]}><mesh><boxGeometry args={[0.58, 0.38, 0.43]} /><meshStandardMaterial color="#e9e4d9" roughness={0.88} /></mesh><mesh position={[0, 0.26, 0]} rotation={[0, Math.PI / 4, 0]}><coneGeometry args={[0.39, 0.17, 4]} /><meshStandardMaterial color={color} roughness={0.8} /></mesh></group>;
 }
 
 function RoadMesh({ road, center }: { road: RoadSegment; center: Point }) {
@@ -178,20 +196,29 @@ function RoadMesh({ road, center }: { road: RoadSegment; center: Point }) {
   const [bx, bz] = toScene([road[2], road[3]], center[0], center[1]);
   const length = Math.hypot(bx - ax, bz - az);
   const angle = Math.atan2(bz - az, bx - ax);
-  const width = ROAD_WIDTHS[road[4]] * WORLD_SCALE * 2;
+  const halfWidth = ROAD_WIDTHS[road[4]] * POINTS_PER_METRE * WORLD_SCALE;
+  const shoulder = 2 * POINTS_PER_METRE * WORLD_SCALE;
+  const roadWidth = halfWidth * 2;
+  const shoulderWidth = (halfWidth + shoulder) * 2;
   return (
     <group
-      position={[(ax + bx) / 2, 0.28, (az + bz) / 2]}
+      position={[(ax + bx) / 2, 0.02, (az + bz) / 2]}
       rotation={[0, -angle, 0]}
     >
       <mesh>
-        <boxGeometry args={[length + width, 0.16, width + 0.36]} />
-        <meshStandardMaterial color="#bdb6a8" roughness={1} />
+        <boxGeometry args={[length + shoulderWidth, 0.012, shoulderWidth]} />
+        <meshStandardMaterial color="#c4bdae" roughness={1} />
       </mesh>
-      <mesh position={[0, 0.1, 0]}>
-        <boxGeometry args={[length + width * 0.75, 0.08, width]} />
-        <meshStandardMaterial color="#393d41" roughness={0.96} />
+      <mesh position={[0, 0.012, 0]}>
+        <boxGeometry args={[length + roadWidth, 0.008, roadWidth]} />
+        <meshStandardMaterial color="#3b3d43" roughness={0.96} />
       </mesh>
+      {road[4] <= 1 && (
+        <mesh position={[0, 0.021, 0]}>
+          <boxGeometry args={[length, 0.004, 0.045]} />
+          <meshBasicMaterial color="#e9e5d5" transparent opacity={0.72} />
+        </mesh>
+      )}
     </group>
   );
 }
@@ -210,13 +237,13 @@ function Trees({ units, center }: { units: EstateUnit[]; center: Point }) {
   return (
     <group>
       {points.map(([x, z], index) => (
-        <group key={index} position={[x, 0.5, z]}>
+        <group key={index} position={[x, 0.3, z]}>
           <mesh>
-            <cylinderGeometry args={[0.05, 0.07, 0.6, 5]} />
+            <cylinderGeometry args={[0.018, 0.025, 0.2, 5]} />
             <meshStandardMaterial color="#594634" />
           </mesh>
-          <mesh position={[0, 0.4, 0]}>
-            <coneGeometry args={[0.28, 0.65, 7]} />
+          <mesh position={[0, 0.17, 0]}>
+            <sphereGeometry args={[0.1, 7, 5]} />
             <meshStandardMaterial color="#357244" />
           </mesh>
         </group>
@@ -228,7 +255,7 @@ function Trees({ units, center }: { units: EstateUnit[]; center: Point }) {
 function CameraRig({ view, focus }: { view: ViewMode; focus: Point | null }) {
   const { camera } = useThree();
   useEffect(() => {
-    if (view === "aerial") camera.position.set(48, 58, 68);
+    if (view === "aerial") camera.position.set(...LEGACY_CAMERA_POSITION);
     else camera.position.set(0, 145, view === "map" ? 0.01 : 0.1);
     camera.lookAt(0, 0, 0);
     camera.updateProjectionMatrix();
@@ -273,25 +300,16 @@ function EstateScene() {
   }, [focusedAmenity, model.parcels, center]);
   return (
     <>
-      <color
-        attach="background"
-        args={[view === "map" ? "#dad7ce" : "#1c1f22"]}
-      />
+      {view === "map" && <color attach="background" args={["#dad7ce"]} />}
       <fog attach="fog" args={["#1c1f22", 110, 220]} />
-      <ambientLight intensity={1.45} />
-      <directionalLight position={[-45, 85, -30]} intensity={2.3} castShadow />
-      <hemisphereLight args={["#dce8ff", "#43513a", 0.9]} />
+      <ambientLight intensity={1.18} />
+      <directionalLight position={[-46, 72, -52]} intensity={1.7} />
+      <hemisphereLight args={["#d9ddd4", "#30392b", 0.65]} />
       <Ground rings={model.site} center={center} />
-      {model.parcels.map((parcel, index) => (
-        <AmenityMesh
-          key={index}
-          parcel={parcel}
-          center={center}
-          color={
-            amenities.find((item) => item.parcel === index)?.color ?? "#668653"
-          }
-        />
-      ))}
+      {model.parcels.map((parcel, index) => {
+        const amenity = amenities.find((item) => item.parcel === index);
+        return <AmenityMesh key={index} parcel={parcel} center={center} color={amenity?.color ?? "#668653"} name={amenity?.name ?? "Community facility"} />;
+      })}
       {visibleUnits.map((unit) => (
         <UnitMesh
           key={unit.id}
@@ -336,9 +354,9 @@ export function EstateCanvas({ esubDetails }: { esubDetails: any }) {
     <main className="estate-stage">
       <Canvas
         key={canvasKey}
-        camera={{ position: [48, 58, 68], fov: 38, near: 0.1, far: 500 }}
+        camera={{ position: LEGACY_CAMERA_POSITION, fov: 45, near: 0.1, far: 500 }}
         dpr={[1, 1.75]}
-        gl={{ antialias: true, powerPreference: "high-performance" }}
+        gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
         onPointerMissed={() => selectUnit(null)}
       >
         <EstateScene />
