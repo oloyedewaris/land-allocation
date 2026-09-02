@@ -9,7 +9,7 @@ import type {
   UnitStatus,
   ViewMode,
 } from "@/types/estate";
-import { MapControls, OrbitControls } from "@react-three/drei";
+import { Edges, MapControls, OrbitControls } from "@react-three/drei";
 import { Canvas, type ThreeEvent, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useState } from "react";
 import * as THREE from "three";
@@ -49,6 +49,8 @@ function UnitMesh({
   center: Point;
   onSelect: (id: string) => void;
 }) {
+  const [hovered, setHovered] = useState(false);
+  const { gl } = useThree();
   const geometry = useMemo(
     () =>
       new THREE.ExtrudeGeometry(makeShape(unit.r, center[0], center[1]), {
@@ -61,6 +63,11 @@ function UnitMesh({
     [unit, selected, status, center],
   );
   useEffect(() => () => geometry.dispose(), [geometry]);
+  useEffect(() => {
+    return () => {
+      if (hovered) gl.domElement.style.cursor = "grab";
+    };
+  }, [gl, hovered]);
   const color = realistic
     ? status === "allocated"
       ? "#bd7257"
@@ -76,17 +83,31 @@ function UnitMesh({
     <mesh
       geometry={geometry}
       rotation={[-Math.PI / 2, 0, 0]}
-      position={[0, 0.22, 0]}
+      position={[0, hovered ? 0.58 : 0.22, 0]}
+      onPointerOver={(event: ThreeEvent<PointerEvent>) => {
+        event.stopPropagation();
+        setHovered(true);
+        gl.domElement.style.cursor = "pointer";
+      }}
+      onPointerOut={() => {
+        setHovered(false);
+        gl.domElement.style.cursor = "grab";
+      }}
       onClick={(event: ThreeEvent<MouseEvent>) => {
         event.stopPropagation();
         onSelect(unit.id);
       }}
     >
       <meshStandardMaterial
-        color={selected ? "#f4d35e" : color}
-        roughness={0.82}
+        color={selected ? "#f4d35e" : hovered ? "#f7d774" : color}
+        emissive={hovered || selected ? "#d6a928" : "#000000"}
+        emissiveIntensity={hovered ? 0.42 : selected ? 0.24 : 0}
+        roughness={hovered ? 0.62 : 0.82}
         metalness={0.02}
       />
+      {(hovered || selected) && (
+        <Edges color={hovered ? "#fff7cf" : "#ffe36e"} lineWidth={2} threshold={12} />
+      )}
     </mesh>
   );
 }
@@ -207,7 +228,7 @@ function Trees({ units, center }: { units: EstateUnit[]; center: Point }) {
 function CameraRig({ view, focus }: { view: ViewMode; focus: Point | null }) {
   const { camera } = useThree();
   useEffect(() => {
-    if (view === "aerial") camera.position.set(66, 78, 92);
+    if (view === "aerial") camera.position.set(48, 58, 68);
     else camera.position.set(0, 145, view === "map" ? 0.01 : 0.1);
     camera.lookAt(0, 0, 0);
     camera.updateProjectionMatrix();
@@ -315,7 +336,7 @@ export function EstateCanvas({ esubDetails }: { esubDetails: any }) {
     <main className="estate-stage">
       <Canvas
         key={canvasKey}
-        camera={{ position: [66, 78, 92], fov: 38, near: 0.1, far: 500 }}
+        camera={{ position: [48, 58, 68], fov: 38, near: 0.1, far: 500 }}
         dpr={[1, 1.75]}
         gl={{ antialias: true, powerPreference: "high-performance" }}
         onPointerMissed={() => selectUnit(null)}
