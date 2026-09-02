@@ -9,7 +9,7 @@ import type {
   UnitStatus,
   ViewMode,
 } from "@/types/estate";
-import { Edges, MapControls, OrbitControls } from "@react-three/drei";
+import { Edges, Html, MapControls, OrbitControls } from "@react-three/drei";
 import { Canvas, type ThreeEvent, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useState } from "react";
 import * as THREE from "three";
@@ -53,6 +53,7 @@ function UnitMesh({
   onSelect: (id: string) => void;
 }) {
   const [hovered, setHovered] = useState(false);
+  const [hoverPosition, setHoverPosition] = useState<[number, number, number] | null>(null);
   const { gl } = useThree();
   const geometry = useMemo(
     () =>
@@ -68,7 +69,7 @@ function UnitMesh({
   useEffect(() => () => geometry.dispose(), [geometry]);
   useEffect(() => {
     return () => {
-      if (hovered) gl.domElement.style.cursor = "grab";
+      if (hovered) gl.domElement.style.cursor = "default";
     };
   }, [gl, hovered]);
   const color = realistic
@@ -83,37 +84,56 @@ function UnitMesh({
         ? "#c43a2c"
         : "#8d959b";
   return (
-    <mesh
-      geometry={geometry}
-      rotation={[-Math.PI / 2, 0, 0]}
-      position={[0, hovered ? 0.14 : 0.025, 0]}
-      onPointerOver={(event: ThreeEvent<PointerEvent>) => {
-        event.stopPropagation();
-        setHovered(true);
-        gl.domElement.style.cursor = "pointer";
-      }}
-      onPointerOut={() => {
-        setHovered(false);
-        gl.domElement.style.cursor = "grab";
-      }}
-      onClick={(event: ThreeEvent<MouseEvent>) => {
-        event.stopPropagation();
-        onSelect(unit.id);
-      }}
-    >
-      <meshStandardMaterial
-        color={selected ? "#f4d35e" : hovered ? "#f7d774" : color}
-        emissive={hovered || selected ? "#d6a928" : "#000000"}
-        emissiveIntensity={hovered ? 0.42 : selected ? 0.24 : 0}
-        roughness={hovered ? 0.62 : 0.82}
-        metalness={0.02}
-      />
-      <Edges
-        color={hovered ? "#fff7cf" : selected ? "#ffe36e" : "#544f46"}
-        lineWidth={hovered || selected ? 2 : 0.35}
-        threshold={12}
-      />
-    </mesh>
+    <>
+      <mesh
+        geometry={geometry}
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, hovered ? 0.14 : 0.025, 0]}
+        onPointerOver={(event: ThreeEvent<PointerEvent>) => {
+          event.stopPropagation();
+          setHovered(true);
+          setHoverPosition([event.point.x, event.point.y + 0.12, event.point.z]);
+          gl.domElement.style.cursor = "pointer";
+        }}
+        onPointerMove={(event: ThreeEvent<PointerEvent>) => {
+          event.stopPropagation();
+          setHoverPosition([event.point.x, event.point.y + 0.12, event.point.z]);
+        }}
+        onPointerOut={() => {
+          setHovered(false);
+          setHoverPosition(null);
+          gl.domElement.style.cursor = "default";
+        }}
+        onClick={(event: ThreeEvent<MouseEvent>) => {
+          event.stopPropagation();
+          onSelect(unit.id);
+        }}
+      >
+        <meshStandardMaterial
+          color={selected ? "#f4d35e" : hovered ? "#f7d774" : color}
+          emissive={hovered || selected ? "#d6a928" : "#000000"}
+          emissiveIntensity={hovered ? 0.42 : selected ? 0.24 : 0}
+          roughness={hovered ? 0.62 : 0.82}
+          metalness={0.02}
+        />
+        <Edges
+          color={hovered ? "#fff7cf" : selected ? "#ffe36e" : "#544f46"}
+          lineWidth={hovered || selected ? 2 : 0.35}
+          threshold={12}
+        />
+      </mesh>
+      {hovered && hoverPosition && (
+        <Html position={hoverPosition} zIndexRange={[40, 0]}>
+          <div className="plot-tooltip" role="tooltip">
+            <div>
+              <strong>{unit.id}</strong>
+              <span>{unit.a.toLocaleString()} m²</span>
+            </div>
+            <p>{status[0].toUpperCase() + status.slice(1)}</p>
+          </div>
+        </Html>
+      )}
+    </>
   );
 }
 
