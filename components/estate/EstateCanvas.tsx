@@ -20,7 +20,7 @@ const WORLD_SCALE = 0.1;
 // The source survey uses 0.252982 drawing points per metre.
 const POINTS_PER_METRE = 0.252982;
 const ROAD_WIDTHS = [13.5, 11.5, 10, 8.5];
-const LEGACY_CAMERA_POSITION: [number, number, number] = [-28.97, 37.15, 47.28];
+const LEGACY_CAMERA_POSITION: [number, number, number] = [-22.65, 29.05, 36.97];
 
 function toScene([x, z]: Point, cx: number, cz: number): [number, number] {
   return [(x - cx) * WORLD_SCALE, (z - cz) * WORLD_SCALE];
