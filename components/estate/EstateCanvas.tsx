@@ -10,8 +10,8 @@ import type {
   ViewMode,
 } from "@/types/estate";
 import { Edges, Html, MapControls, OrbitControls } from "@react-three/drei";
-import { Canvas, type ThreeEvent, useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useState } from "react";
+import { Canvas, type ThreeEvent, useFrame, useThree } from "@react-three/fiber";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { useEstate } from "./EstateProvider";
 import { UnitDetailsPanel } from "./UnitDetailsPanel";
@@ -21,6 +21,17 @@ const WORLD_SCALE = 0.1;
 const POINTS_PER_METRE = 0.252982;
 const ROAD_WIDTHS = [13.5, 11.5, 10, 8.5];
 const LEGACY_CAMERA_POSITION: [number, number, number] = [-22.65, 29.05, 36.97];
+type NavigationAction = "up" | "right" | "down" | "left" | "zoom-in" | "zoom-out" | "home";
+type NavigationCommand = { action: NavigationAction; id: number };
+
+function CaretIcon({ direction }: { direction: "up" | "right" | "down" | "left" }) {
+  const rotation = { up: 0, right: 90, down: 180, left: -90 }[direction];
+  return (
+    <svg className="nav-caret" viewBox="0 0 24 24" aria-hidden="true" style={{ transform: `rotate(${rotation}deg)` }}>
+      <path d="M6.75 14.25 12 9l5.25 5.25" />
+    </svg>
+  );
+}
 
 function toScene([x, z]: Point, cx: number, cz: number): [number, number] {
   return [(x - cx) * WORLD_SCALE, (z - cz) * WORLD_SCALE];
@@ -171,11 +182,15 @@ function AmenityMesh({
   parcel,
   color,
   name,
+  landmarkPosition,
+  selected,
   center,
 }: {
   parcel: AmenityParcel;
   color: string;
-  name: string;
+  name?: string;
+  landmarkPosition?: Point;
+  selected: boolean;
   center: Point;
 }) {
   const geometry = useMemo(
@@ -189,15 +204,21 @@ function AmenityMesh({
     [parcel, center],
   );
   useEffect(() => () => geometry.dispose(), [geometry]);
-  const centroid = useMemo(() => {
-    const point = parcel.r.reduce((sum, current) => [sum[0] + current[0] / parcel.r.length, sum[1] + current[1] / parcel.r.length] as Point, [0, 0]);
-    return toScene(point, center[0], center[1]);
-  }, [parcel, center]);
+  const scenePosition = useMemo(
+    () => landmarkPosition && toScene(landmarkPosition, center[0], center[1]),
+    [landmarkPosition, center],
+  );
   return <>
     <mesh geometry={geometry} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.012, 0]}>
-      <meshStandardMaterial color={color} roughness={0.78} />
+      <meshStandardMaterial
+        color={color}
+        emissive={selected ? color : "#000000"}
+        emissiveIntensity={selected ? 0.38 : 0}
+        roughness={0.78}
+      />
+      {selected && <Edges color="#ffffff" lineWidth={3} threshold={8} />}
     </mesh>
-    <AmenityLandmark name={name} color={color} position={centroid} />
+    {name && scenePosition && <AmenityLandmark name={name} color={color} position={scenePosition} />}
   </>;
 }
 
@@ -272,23 +293,155 @@ function Trees({ units, center }: { units: EstateUnit[]; center: Point }) {
   );
 }
 
-function CameraRig({ view, focus }: { view: ViewMode; focus: Point | null }) {
-  const { camera } = useThree();
+function CanvasLabels({ center }: { center: Point }) {
+  const { camera, gl } = useThree();
+  const layer = useRef<HTMLCanvasElement | null>(null);
+  const projected = useMemo(() => new THREE.Vector3(), []);
+
   useEffect(() => {
-    if (view === "aerial") camera.position.set(...LEGACY_CAMERA_POSITION);
-    else camera.position.set(0, 145, view === "map" ? 0.01 : 0.1);
-    camera.lookAt(0, 0, 0);
-    camera.updateProjectionMatrix();
-  }, [camera, view]);
-  useEffect(() => {
-    if (!focus) return;
-    camera.position.set(focus[0] + 16, 28, focus[1] + 22);
-    camera.lookAt(focus[0], 0, focus[1]);
-  }, [camera, focus]);
+    const parent = gl.domElement.parentElement;
+    if (!parent) return;
+    const canvas = document.createElement("canvas");
+    canvas.className = "estate-label-layer";
+    parent.appendChild(canvas);
+    layer.current = canvas;
+    return () => {
+      canvas.remove();
+      layer.current = null;
+    };
+  }, [gl]);
+
+  useFrame(() => {
+    const canvas = layer.current;
+    if (!canvas) return;
+    const width = gl.domElement.clientWidth;
+    const height = gl.domElement.clientHeight;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const pixelWidth = Math.round(width * dpr);
+    const pixelHeight = Math.round(height * dpr);
+    if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
+      canvas.width = pixelWidth;
+      canvas.height = pixelHeight;
+    }
+    const context = canvas.getContext("2d");
+    if (!context) return;
+    context.setTransform(dpr, 0, 0, dpr, 0, 0);
+    context.clearRect(0, 0, width, height);
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+
+    const drawLabel = (text: string, x: number, z: number, amenity = false) => {
+      projected.set(x, amenity ? 0.58 : 0.16, z).project(camera);
+      if (projected.z < -1 || projected.z > 1) return;
+      const screenX = (projected.x * 0.5 + 0.5) * width;
+      const screenY = (-projected.y * 0.5 + 0.5) * height;
+      if (screenX < 0 || screenX > width || screenY < 0 || screenY > height) return;
+      context.font = amenity
+        ? "600 10px ui-monospace, SFMono-Regular, Consolas, monospace"
+        : "8px ui-monospace, SFMono-Regular, Consolas, monospace";
+      context.lineWidth = amenity ? 3 : 2;
+      context.strokeStyle = amenity ? "rgba(238, 235, 220, .9)" : "rgba(235, 232, 218, .72)";
+      context.fillStyle = "#20251f";
+      context.strokeText(text, screenX, screenY);
+      context.fillText(text, screenX, screenY);
+    };
+
+    for (const amenity of amenities) {
+      const [x, z] = toScene(
+        [
+          amenity.x + amenity.labelDx * POINTS_PER_METRE,
+          amenity.z + amenity.labelDz * POINTS_PER_METRE,
+        ],
+        center[0],
+        center[1],
+      );
+      drawLabel(amenity.name, x, z, true);
+    }
+  });
+
   return null;
 }
 
-function EstateScene() {
+function CameraRig({ view, focus, command }: { view: ViewMode; focus: Point | null; command: NavigationCommand | null }) {
+  const { camera } = useThree();
+  const controls = useThree((state) => state.controls) as unknown as
+    | { target: THREE.Vector3; update: () => void }
+    | null
+    | undefined;
+  const cameraGoal = useRef(new THREE.Vector3());
+  const targetGoal = useRef(new THREE.Vector3());
+  const animating = useRef(false);
+  useEffect(() => {
+    if (view === "aerial") camera.position.set(...LEGACY_CAMERA_POSITION);
+    else camera.position.set(0, 145, view === "map" ? 0.01 : 0.1);
+    controls?.target.set(0, 0, 0);
+    camera.lookAt(0, 0, 0);
+    controls?.update();
+    camera.updateProjectionMatrix();
+  }, [camera, controls, view]);
+  useEffect(() => {
+    if (!focus || !controls) return;
+    const direction = camera.position.clone().sub(controls.target).normalize();
+    targetGoal.current.set(focus[0], 0, focus[1]);
+    cameraGoal.current.copy(targetGoal.current).add(direction.multiplyScalar(22));
+    animating.current = true;
+  }, [camera, controls, focus]);
+  useEffect(() => {
+    if (!command || !controls) return;
+    animating.current = false;
+    if (command.action === "home") {
+      if (view === "aerial") camera.position.set(...LEGACY_CAMERA_POSITION);
+      else camera.position.set(0, 145, view === "map" ? 0.01 : 0.1);
+      controls.target.set(0, 0, 0);
+    } else if (command.action === "zoom-in" || command.action === "zoom-out") {
+      const offset = camera.position.clone().sub(controls.target);
+      const currentDistance = offset.length();
+      const nextDistance = THREE.MathUtils.clamp(
+        currentDistance * (command.action === "zoom-in" ? 0.8 : 1.25),
+        12,
+        220,
+      );
+      camera.position.copy(controls.target).add(offset.setLength(nextDistance));
+    } else {
+      const forward = controls.target.clone().sub(camera.position);
+      forward.y = 0;
+      if (forward.lengthSq() < 0.0001) forward.set(0, 0, -1);
+      forward.normalize();
+      const right = new THREE.Vector3().crossVectors(forward, camera.up).normalize();
+      const step = THREE.MathUtils.clamp(camera.position.distanceTo(controls.target) * 0.12, 1.5, 8);
+      const movement = command.action === "up"
+        ? forward
+        : command.action === "down"
+          ? forward.multiplyScalar(-1)
+          : command.action === "right"
+            ? right
+            : right.multiplyScalar(-1);
+      movement.multiplyScalar(step);
+      camera.position.add(movement);
+      controls.target.add(movement);
+    }
+    camera.lookAt(controls.target);
+    controls.update();
+  }, [camera, command, controls, view]);
+  useFrame(() => {
+    if (!animating.current || !controls) return;
+    camera.position.lerp(cameraGoal.current, 0.09);
+    controls.target.lerp(targetGoal.current, 0.11);
+    controls.update();
+    if (
+      camera.position.distanceToSquared(cameraGoal.current) < 0.0025 &&
+      controls.target.distanceToSquared(targetGoal.current) < 0.0025
+    ) {
+      camera.position.copy(cameraGoal.current);
+      controls.target.copy(targetGoal.current);
+      controls.update();
+      animating.current = false;
+    }
+  });
+  return null;
+}
+
+function EstateScene({ navigationCommand }: { navigationCommand: NavigationCommand | null }) {
   const {
     model,
     statuses,
@@ -298,6 +451,7 @@ function EstateScene() {
     selectUnit,
     view,
     focusedAmenity,
+    setFocusedAmenity,
   } = useEstate();
   const center = useMemo<Point>(
     () => [model.meta.cx, model.meta.cz],
@@ -306,17 +460,8 @@ function EstateScene() {
   const focus = useMemo<Point | null>(() => {
     if (focusedAmenity === null) return null;
     const item = amenities[focusedAmenity];
-    const parcel = model.parcels[item.parcel];
-    if (!parcel) return null;
-    const average = parcel.r.reduce(
-      (sum, point) =>
-        [
-          sum[0] + point[0] / parcel.r.length,
-          sum[1] + point[1] / parcel.r.length,
-        ] as Point,
-      [0, 0],
-    );
-    return toScene(average, center[0], center[1]);
+    if (!item || !model.parcels[item.parcel]) return null;
+    return toScene([item.x, item.z], center[0], center[1]);
   }, [focusedAmenity, model.parcels, center]);
   return (
     <>
@@ -328,7 +473,7 @@ function EstateScene() {
       <Ground rings={model.site} center={center} />
       {model.parcels.map((parcel, index) => {
         const amenity = amenities.find((item) => item.parcel === index);
-        return <AmenityMesh key={index} parcel={parcel} center={center} color={amenity?.color ?? "#668653"} name={amenity?.name ?? "Community facility"} />;
+        return <AmenityMesh key={index} parcel={parcel} center={center} color={amenity?.color ?? "#668653"} name={amenity?.name} landmarkPosition={amenity ? [amenity.x, amenity.z] : undefined} selected={amenity ? amenities.indexOf(amenity) === focusedAmenity : false} />;
       })}
       {visibleUnits.map((unit) => (
         <UnitMesh
@@ -338,14 +483,18 @@ function EstateScene() {
           selected={selectedId === unit.id}
           realistic={shading === "realistic"}
           center={center}
-          onSelect={selectUnit}
+          onSelect={(id) => {
+            setFocusedAmenity(null);
+            selectUnit(id);
+          }}
         />
       ))}
       {model.roads.map((road, index) => (
         <RoadMesh key={index} road={road} center={center} />
       ))}
       <Trees units={visibleUnits} center={center} />
-      <CameraRig view={view} focus={focus} />
+      <CanvasLabels center={center} />
+      <CameraRig view={view} focus={focus} command={navigationCommand} />
       {view === "map" ? (
         <MapControls
           makeDefault
@@ -367,33 +516,56 @@ function EstateScene() {
   );
 }
 
+function ModelReady({ onReady }: { onReady: () => void }) {
+  const reported = useRef(false);
+  useFrame(() => {
+    if (reported.current) return;
+    reported.current = true;
+    requestAnimationFrame(onReady);
+  });
+  return null;
+}
+
 export function EstateCanvas({ esubDetails }: { esubDetails: any }) {
   const { view, setView, selectUnit } = useEstate();
-  const [canvasKey, setCanvasKey] = useState(0);
+  const [modelReady, setModelReady] = useState(false);
+  const [navigationCommand, setNavigationCommand] = useState<NavigationCommand | null>(null);
+  const navigate = (action: NavigationAction) => setNavigationCommand({ action, id: Date.now() });
   return (
     <main className="estate-stage">
+      {!modelReady && (
+        <div className="estate-model-loader" role="status" aria-label="Loading estate model">
+          <div className="estate-loader-card">
+            <div className="loader" />
+          </div>
+        </div>
+      )}
       <Canvas
-        key={canvasKey}
         camera={{ position: LEGACY_CAMERA_POSITION, fov: 45, near: 0.1, far: 500 }}
         dpr={[1, 1.75]}
         gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
         onPointerMissed={() => selectUnit(null)}
       >
-        <EstateScene />
+        <EstateScene navigationCommand={navigationCommand} />
+        <ModelReady onReady={() => setModelReady(true)} />
       </Canvas>
       <div className="nav-pad">
-        <button onClick={() => setCanvasKey((value) => value + 1)}>↻</button>
-        <button onClick={() => setView("plan")}>⌃</button>
+        <button aria-label="Zoom in" title="Zoom in" onClick={() => navigate("zoom-in")}>+</button>
+        <button aria-label="Pan up" title="Pan up" onClick={() => navigate("up")}><CaretIcon direction="up" /></button>
         <div>
-          <button onClick={() => setView("map")}>‹</button>
+          <button aria-label="Pan left" title="Pan left" onClick={() => navigate("left")}><CaretIcon direction="left" /></button>
           <button
             className="home"
-            onClick={() => setCanvasKey((value) => value + 1)}
+            aria-label="Recenter model"
+            title="Recenter model"
+            onClick={() => navigate("home")}
           >
             ⌂
           </button>
-          <button onClick={() => setView("aerial")}>›</button>
+          <button aria-label="Pan right" title="Pan right" onClick={() => navigate("right")}><CaretIcon direction="right" /></button>
         </div>
+        <button aria-label="Pan down" title="Pan down" onClick={() => navigate("down")}><CaretIcon direction="down" /></button>
+        <button aria-label="Zoom out" title="Zoom out" onClick={() => navigate("zoom-out")}>−</button>
       </div>
       <div className="canvas-hud">
         Drag orbit · Right drag pan · Scroll zoom · Home recenters

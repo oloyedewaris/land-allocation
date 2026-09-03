@@ -1,7 +1,9 @@
 export default function Loading() {
   return (
-    <main className="grid min-h-screen place-items-center bg-[#1b1d21] font-mono text-xs text-slate-400">
-      Loading live plot allocations…
+    <main className="estate-model-loader app-loading" role="status" aria-label="Loading estate model">
+      <div className="estate-loader-card">
+        <div className="loader" />
+      </div>
     </main>
   );
 }
