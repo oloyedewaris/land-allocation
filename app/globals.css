@@ -339,11 +339,16 @@ html {
   width: 100%;
   height: 100%;
   display: block;
-  cursor: default
+  cursor: pointer
 }
 
 .estate-stage canvas:active {
-  cursor: default
+  cursor: pointer
+}
+
+.estate-stage canvas.plot-hovered,
+.estate-stage canvas.plot-hovered:active {
+  cursor: pointer !important
 }
 
 .estate-label-layer {

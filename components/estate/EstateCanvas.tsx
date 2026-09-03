@@ -21,6 +21,8 @@ const WORLD_SCALE = 0.1;
 const POINTS_PER_METRE = 0.252982;
 const ROAD_WIDTHS = [13.5, 11.5, 10, 8.5];
 const LEGACY_CAMERA_POSITION: [number, number, number] = [-22.65, 29.05, 36.97];
+const NO_RAYCAST = () => null;
+const PLOT_HOVER_EVENT = "estate-plot-hover";
 type NavigationAction = "up" | "right" | "down" | "left" | "zoom-in" | "zoom-out" | "home";
 type NavigationCommand = { action: NavigationAction; id: number };
 
@@ -65,24 +67,35 @@ function UnitMesh({
 }) {
   const [hovered, setHovered] = useState(false);
   const [hoverPosition, setHoverPosition] = useState<[number, number, number] | null>(null);
+  const hoverExitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { gl } = useThree();
   const geometry = useMemo(
-    () =>
-      new THREE.ExtrudeGeometry(makeShape(unit.r, center[0], center[1]), {
-        depth: selected ? 0.08 : status === "allocated" ? 0.05 : 0.035,
-        bevelEnabled: true,
-        bevelSize: 0.025,
-        bevelThickness: 0.025,
-        bevelSegments: 1,
-      }),
-    [unit, selected, status, center],
+    () => new THREE.ShapeGeometry(makeShape(unit.r, center[0], center[1])),
+    [unit, center],
   );
   useEffect(() => () => geometry.dispose(), [geometry]);
   useEffect(() => {
-    return () => {
-      if (hovered) gl.domElement.style.cursor = "default";
+      return () => {
+        if (hoverExitTimer.current) clearTimeout(hoverExitTimer.current);
+        if (hovered && gl.domElement.dataset.hoveredPlot === unit.id) {
+          delete gl.domElement.dataset.hoveredPlot;
+          gl.domElement.classList.remove("plot-hovered");
+          gl.domElement.style.cursor = "pointer";
+        }
+      };
+  }, [gl, hovered, unit.id]);
+  useEffect(() => {
+    if (!hovered) return;
+    const clearIfDifferent = (event: Event) => {
+      const nextId = (event as CustomEvent<string | null>).detail;
+      if (nextId === unit.id) return;
+      if (hoverExitTimer.current) clearTimeout(hoverExitTimer.current);
+      setHovered(false);
+      setHoverPosition(null);
     };
-  }, [gl, hovered]);
+    gl.domElement.addEventListener(PLOT_HOVER_EVENT, clearIfDifferent);
+    return () => gl.domElement.removeEventListener(PLOT_HOVER_EVENT, clearIfDifferent);
+  }, [gl, hovered, unit.id]);
   const color = realistic
     ? status === "allocated"
       ? "#bd7257"
@@ -99,21 +112,46 @@ function UnitMesh({
       <mesh
         geometry={geometry}
         rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, hovered ? 0.14 : 0.025, 0]}
+        position={[0, 0.055, 0]}
         onPointerOver={(event: ThreeEvent<PointerEvent>) => {
           event.stopPropagation();
+          if (hoverExitTimer.current) clearTimeout(hoverExitTimer.current);
+          if (gl.domElement.dataset.hoveredPlot !== unit.id) {
+            gl.domElement.dispatchEvent(new CustomEvent(PLOT_HOVER_EVENT, { detail: unit.id }));
+          }
           setHovered(true);
           setHoverPosition([event.point.x, event.point.y + 0.12, event.point.z]);
+          gl.domElement.dataset.hoveredPlot = unit.id;
+          gl.domElement.classList.add("plot-hovered");
           gl.domElement.style.cursor = "pointer";
         }}
         onPointerMove={(event: ThreeEvent<PointerEvent>) => {
           event.stopPropagation();
+          if (hoverExitTimer.current) clearTimeout(hoverExitTimer.current);
+          if (gl.domElement.dataset.hoveredPlot !== unit.id) {
+            gl.domElement.dispatchEvent(new CustomEvent(PLOT_HOVER_EVENT, { detail: unit.id }));
+          }
+          gl.domElement.dataset.hoveredPlot = unit.id;
+          gl.domElement.classList.add("plot-hovered");
+          gl.domElement.style.cursor = "pointer";
           setHoverPosition([event.point.x, event.point.y + 0.12, event.point.z]);
         }}
         onPointerOut={() => {
-          setHovered(false);
-          setHoverPosition(null);
-          gl.domElement.style.cursor = "default";
+          if (hoverExitTimer.current) clearTimeout(hoverExitTimer.current);
+          hoverExitTimer.current = setTimeout(() => {
+            setHovered(false);
+            setHoverPosition(null);
+            if (gl.domElement.dataset.hoveredPlot === unit.id) {
+              delete gl.domElement.dataset.hoveredPlot;
+              gl.domElement.classList.remove("plot-hovered");
+              gl.domElement.style.cursor = "pointer";
+            }
+          }, 60);
+        }}
+        onPointerDown={(event: ThreeEvent<PointerEvent>) => {
+          event.stopPropagation();
+          gl.domElement.classList.add("plot-hovered");
+          gl.domElement.style.cursor = "pointer";
         }}
         onClick={(event: ThreeEvent<MouseEvent>) => {
           event.stopPropagation();
@@ -121,16 +159,19 @@ function UnitMesh({
         }}
       >
         <meshStandardMaterial
-          color={selected ? "#f4d35e" : hovered ? "#f7d774" : color}
-          emissive={hovered || selected ? "#d6a928" : "#000000"}
-          emissiveIntensity={hovered ? 0.42 : selected ? 0.24 : 0}
-          roughness={hovered ? 0.62 : 0.82}
+          color={selected ? "#f4d35e" : color}
+          emissive={selected ? "#d6a928" : "#000000"}
+          emissiveIntensity={selected ? 0.24 : 0}
+          roughness={0.82}
           metalness={0.02}
         />
         <Edges
-          color={hovered ? "#fff7cf" : selected ? "#ffe36e" : "#544f46"}
-          lineWidth={hovered || selected ? 2 : 0.35}
+          color={hovered ? "#ffffff" : selected ? "#ffe36e" : "#343730"}
+          lineWidth={hovered ? 2.25 : 1}
           threshold={12}
+          position={[0, 0, hovered ? 0.035 : selected ? 0.025 : 0.002]}
+          renderOrder={hovered ? 20 : selected ? 15 : 0}
+          depthTest={!hovered && !selected}
         />
       </mesh>
       {hovered && hoverPosition && (
@@ -166,6 +207,7 @@ function Ground({ rings, center }: { rings: Point[][]; center: Point }) {
       {geometries.map((geometry, index) => (
         <mesh
           key={index}
+          raycast={NO_RAYCAST}
           geometry={geometry}
           rotation={[-Math.PI / 2, 0, 0]}
           position={[0, 0, 0]}
@@ -209,7 +251,7 @@ function AmenityMesh({
     [landmarkPosition, center],
   );
   return <>
-    <mesh geometry={geometry} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.012, 0]}>
+    <mesh raycast={NO_RAYCAST} geometry={geometry} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.012, 0]}>
       <meshStandardMaterial
         color={color}
         emissive={selected ? color : "#000000"}
@@ -224,12 +266,12 @@ function AmenityMesh({
 
 function AmenityLandmark({ name, color, position }: { name: string; color: string; position: Point }) {
   if (name.includes("Park") || name.includes("Playground")) {
-    return <group position={[position[0], 0.3, position[1]]}>{[-0.22, 0, 0.22].map((x, index) => <group key={x} position={[x, 0, index === 1 ? -0.14 : 0.09]}><mesh><cylinderGeometry args={[0.018, 0.025, 0.2, 5]} /><meshStandardMaterial color="#70543f" /></mesh><mesh position={[0, 0.17, 0]}><sphereGeometry args={[0.1, 7, 5]} /><meshStandardMaterial color="#527b43" /></mesh></group>)}</group>;
+    return <group position={[position[0], 0.3, position[1]]}>{[-0.22, 0, 0.22].map((x, index) => <group key={x} position={[x, 0, index === 1 ? -0.14 : 0.09]}><mesh raycast={NO_RAYCAST}><cylinderGeometry args={[0.018, 0.025, 0.2, 5]} /><meshStandardMaterial color="#70543f" /></mesh><mesh raycast={NO_RAYCAST} position={[0, 0.17, 0]}><sphereGeometry args={[0.1, 7, 5]} /><meshStandardMaterial color="#527b43" /></mesh></group>)}</group>;
   }
   if (name.includes("Pool")) {
-    return <group position={[position[0], 0.34, position[1]]}><mesh><boxGeometry args={[0.7, 0.06, 0.38]} /><meshStandardMaterial color="#52a0bd" roughness={0.3} /></mesh><mesh position={[0.48, 0.2, 0]}><boxGeometry args={[0.28, 0.4, 0.32]} /><meshStandardMaterial color="#e9e4d9" /></mesh></group>;
+    return <group position={[position[0], 0.34, position[1]]}><mesh raycast={NO_RAYCAST}><boxGeometry args={[0.7, 0.06, 0.38]} /><meshStandardMaterial color="#52a0bd" roughness={0.3} /></mesh><mesh raycast={NO_RAYCAST} position={[0.48, 0.2, 0]}><boxGeometry args={[0.28, 0.4, 0.32]} /><meshStandardMaterial color="#e9e4d9" /></mesh></group>;
   }
-  return <group position={[position[0], 0.39, position[1]]}><mesh><boxGeometry args={[0.58, 0.38, 0.43]} /><meshStandardMaterial color="#e9e4d9" roughness={0.88} /></mesh><mesh position={[0, 0.26, 0]} rotation={[0, Math.PI / 4, 0]}><coneGeometry args={[0.39, 0.17, 4]} /><meshStandardMaterial color={color} roughness={0.8} /></mesh></group>;
+  return <group position={[position[0], 0.39, position[1]]}><mesh raycast={NO_RAYCAST}><boxGeometry args={[0.58, 0.38, 0.43]} /><meshStandardMaterial color="#e9e4d9" roughness={0.88} /></mesh><mesh raycast={NO_RAYCAST} position={[0, 0.26, 0]} rotation={[0, Math.PI / 4, 0]}><coneGeometry args={[0.39, 0.17, 4]} /><meshStandardMaterial color={color} roughness={0.8} /></mesh></group>;
 }
 
 function RoadMesh({ road, center }: { road: RoadSegment; center: Point }) {
@@ -246,16 +288,16 @@ function RoadMesh({ road, center }: { road: RoadSegment; center: Point }) {
       position={[(ax + bx) / 2, 0.02, (az + bz) / 2]}
       rotation={[0, -angle, 0]}
     >
-      <mesh>
+      <mesh raycast={NO_RAYCAST}>
         <boxGeometry args={[length + shoulderWidth, 0.012, shoulderWidth]} />
         <meshStandardMaterial color="#c4bdae" roughness={1} />
       </mesh>
-      <mesh position={[0, 0.012, 0]}>
+      <mesh raycast={NO_RAYCAST} position={[0, 0.012, 0]}>
         <boxGeometry args={[length + roadWidth, 0.008, roadWidth]} />
         <meshStandardMaterial color="#3b3d43" roughness={0.96} />
       </mesh>
       {road[4] <= 1 && (
-        <mesh position={[0, 0.021, 0]}>
+        <mesh raycast={NO_RAYCAST} position={[0, 0.021, 0]}>
           <boxGeometry args={[length, 0.004, 0.045]} />
           <meshBasicMaterial color="#e9e5d5" transparent opacity={0.72} />
         </mesh>
@@ -279,11 +321,11 @@ function Trees({ units, center }: { units: EstateUnit[]; center: Point }) {
     <group>
       {points.map(([x, z], index) => (
         <group key={index} position={[x, 0.3, z]}>
-          <mesh>
+          <mesh raycast={NO_RAYCAST}>
             <cylinderGeometry args={[0.018, 0.025, 0.2, 5]} />
             <meshStandardMaterial color="#594634" />
           </mesh>
-          <mesh position={[0, 0.17, 0]}>
+          <mesh raycast={NO_RAYCAST} position={[0, 0.17, 0]}>
             <sphereGeometry args={[0.1, 7, 5]} />
             <meshStandardMaterial color="#357244" />
           </mesh>
@@ -293,8 +335,12 @@ function Trees({ units, center }: { units: EstateUnit[]; center: Point }) {
   );
 }
 
-function CanvasLabels({ center }: { center: Point }) {
+function CanvasLabels({ units, center }: { units: EstateUnit[]; center: Point }) {
   const { camera, gl } = useThree();
+  const controls = useThree((state) => state.controls) as unknown as
+    | { target: THREE.Vector3 }
+    | null
+    | undefined;
   const layer = useRef<HTMLCanvasElement | null>(null);
   const projected = useMemo(() => new THREE.Vector3(), []);
 
@@ -345,6 +391,16 @@ function CanvasLabels({ center }: { center: Point }) {
       context.strokeText(text, screenX, screenY);
       context.fillText(text, screenX, screenY);
     };
+
+    const cameraDistance = controls?.target
+      ? camera.position.distanceTo(controls.target)
+      : camera.position.length();
+    if (cameraDistance <= 20) {
+      for (const unit of units) {
+        const [x, z] = toScene(unit.c, center[0], center[1]);
+        drawLabel(unit.id, x, z);
+      }
+    }
 
     for (const amenity of amenities) {
       const [x, z] = toScene(
@@ -442,6 +498,7 @@ function CameraRig({ view, focus, command }: { view: ViewMode; focus: Point | nu
 }
 
 function EstateScene({ navigationCommand }: { navigationCommand: NavigationCommand | null }) {
+  const { gl } = useThree();
   const {
     model,
     statuses,
@@ -463,6 +520,11 @@ function EstateScene({ navigationCommand }: { navigationCommand: NavigationComma
     if (!item || !model.parcels[item.parcel]) return null;
     return toScene([item.x, item.z], center[0], center[1]);
   }, [focusedAmenity, model.parcels, center]);
+  const clearPlotHover = () => {
+    delete gl.domElement.dataset.hoveredPlot;
+    gl.domElement.classList.remove("plot-hovered");
+    gl.domElement.dispatchEvent(new CustomEvent(PLOT_HOVER_EVENT, { detail: null }));
+  };
   return (
     <>
       {view === "map" && <color attach="background" args={["#dad7ce"]} />}
@@ -493,11 +555,12 @@ function EstateScene({ navigationCommand }: { navigationCommand: NavigationComma
         <RoadMesh key={index} road={road} center={center} />
       ))}
       <Trees units={visibleUnits} center={center} />
-      <CanvasLabels center={center} />
+      <CanvasLabels units={visibleUnits} center={center} />
       <CameraRig view={view} focus={focus} command={navigationCommand} />
       {view === "map" ? (
         <MapControls
           makeDefault
+          onStart={clearPlotHover}
           enableRotate={false}
           maxDistance={220}
           minDistance={12}
@@ -505,6 +568,7 @@ function EstateScene({ navigationCommand }: { navigationCommand: NavigationComma
       ) : (
         <OrbitControls
           makeDefault
+          onStart={clearPlotHover}
           maxPolarAngle={Math.PI / 2.08}
           minPolarAngle={0.08}
           maxDistance={220}
