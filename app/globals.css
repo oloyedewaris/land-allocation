@@ -98,47 +98,6 @@ html {
   background: #9aa0a3
 }
 
-.admin-toggle {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  cursor: default
-}
-
-.admin-toggle input {
-  display: none
-}
-
-.admin-toggle i {
-  width: 34px;
-  height: 19px;
-  border-radius: 20px;
-  background: #24272a;
-  border: 1px solid #3b3e41;
-  position: relative
-}
-
-.admin-toggle i:after {
-  content: "";
-  position: absolute;
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
-  background: #777;
-  left: 2px;
-  top: 2px;
-  transition: .15s
-}
-
-.admin-toggle input:checked+i {
-  background: #244a2c
-}
-
-.admin-toggle input:checked+i:after {
-  left: 17px;
-  background: #64b877
-}
-
 .estate-button {
   background: #232529;
   border: 1px solid #393c40;

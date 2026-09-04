@@ -856,8 +856,32 @@ export function EstateCanvas({ esubDetails }: { esubDetails: EsubDetails }) {
   const [modelReady, setModelReady] = useState(false);
   const [navigationCommand, setNavigationCommand] =
     useState<NavigationCommand | null>(null);
-  const navigate = (action: NavigationAction) =>
+  const navigate = useCallback((action: NavigationAction) => {
     setNavigationCommand({ action, id: Date.now() });
+  }, []);
+  useEffect(() => {
+    const keyboardActions: Partial<Record<string, NavigationAction>> = {
+      ArrowUp: "up",
+      ArrowRight: "right",
+      ArrowDown: "down",
+      ArrowLeft: "left",
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target;
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        (target instanceof HTMLElement && target.isContentEditable)
+      ) return;
+      const action = keyboardActions[event.key];
+      if (!action) return;
+      event.preventDefault();
+      navigate(action);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [navigate]);
   return (
     <main className="estate-stage">
       {!modelReady && (
@@ -947,7 +971,7 @@ export function EstateCanvas({ esubDetails }: { esubDetails: EsubDetails }) {
         Drag orbit · Right drag pan · Scroll zoom · Home recenters
       </div>
       <div className="view-switch">
-        {(["map", "plan", "aerial"] as const).map((mode) => (
+        {(["plan", "aerial"] as const).map((mode) => (
           <button
             key={mode}
             aria-pressed={view === mode}
