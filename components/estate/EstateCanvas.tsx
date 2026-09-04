@@ -23,7 +23,7 @@ import {
   useFrame,
   useThree,
 } from "@react-three/fiber";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { useEstate } from "./EstateProvider";
 import { UnitDetailsPanel } from "./UnitDetailsPanel";
@@ -35,13 +35,7 @@ const ROAD_WIDTHS = [13.5, 11.5, 10, 8.5];
 const LEGACY_CAMERA_POSITION: [number, number, number] = [-22.65, 29.05, 36.97];
 const MIN_CAMERA_DISTANCE = 2;
 const NO_RAYCAST = () => null;
-let activeHoverPlotId: string | null = null;
-const hoverListeners = new Set<(id: string | null) => void>();
-function publishPlotHover(id: string | null) {
-  if (activeHoverPlotId === id) return;
-  activeHoverPlotId = id;
-  hoverListeners.forEach((listener) => listener(id));
-}
+type HoverPosition = [number, number, number];
 type NavigationAction =
   | "up"
   | "right"
@@ -109,45 +103,32 @@ function polygonCentroid(ring: Point[]): Point {
   return [x / (3 * signedArea), z / (3 * signedArea)];
 }
 
-function UnitMesh({
+const UnitMesh = memo(function UnitMesh({
   unit,
   status,
+  hovered,
   selected,
   realistic,
   center,
+  onHover,
+  onLeave,
   onSelect,
 }: {
   unit: EstateUnit;
   status: UnitStatus;
+  hovered: boolean;
   selected: boolean;
   realistic: boolean;
   center: Point;
+  onHover: (id: string, position: HoverPosition) => void;
+  onLeave: (id: string) => void;
   onSelect: (id: string) => void;
 }) {
-  const [hovered, setHovered] = useState(false);
-  const [hoverPosition, setHoverPosition] = useState<
-    [number, number, number] | null
-  >(null);
-  const hoverExitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const geometry = useMemo(
     () => new THREE.ShapeGeometry(makeShape(unit.r, center[0], center[1])),
     [unit, center],
   );
   useEffect(() => () => geometry.dispose(), [geometry]);
-  useEffect(() => {
-    if (!hovered) return;
-    const clearIfDifferent = (nextId: string | null) => {
-      if (nextId === unit.id) return;
-      if (hoverExitTimer.current) clearTimeout(hoverExitTimer.current);
-      setHovered(false);
-      setHoverPosition(null);
-    };
-    hoverListeners.add(clearIfDifferent);
-    return () => {
-      hoverListeners.delete(clearIfDifferent);
-      if (hoverExitTimer.current) clearTimeout(hoverExitTimer.current);
-    };
-  }, [hovered, unit.id]);
   const color = realistic
     ? status === "allocated"
       ? "#bd7257"
@@ -167,10 +148,7 @@ function UnitMesh({
         position={[0, 0.055, 0]}
         onPointerOver={(event: ThreeEvent<PointerEvent>) => {
           event.stopPropagation();
-          if (hoverExitTimer.current) clearTimeout(hoverExitTimer.current);
-          publishPlotHover(unit.id);
-          setHovered(true);
-          setHoverPosition([
+          onHover(unit.id, [
             event.point.x,
             event.point.y + 0.12,
             event.point.z,
@@ -178,27 +156,16 @@ function UnitMesh({
         }}
         onPointerMove={(event: ThreeEvent<PointerEvent>) => {
           event.stopPropagation();
-          if (hoverExitTimer.current) clearTimeout(hoverExitTimer.current);
-          publishPlotHover(unit.id);
-          setHovered(true);
-          setHoverPosition([
+          onHover(unit.id, [
             event.point.x,
             event.point.y + 0.12,
             event.point.z,
           ]);
         }}
-        onPointerOut={() => {
-          if (hoverExitTimer.current) clearTimeout(hoverExitTimer.current);
-          hoverExitTimer.current = setTimeout(() => {
-            if (activeHoverPlotId === unit.id) publishPlotHover(null);
-          }, 60);
-        }}
+        onPointerOut={() => onLeave(unit.id)}
         onPointerDown={(event: ThreeEvent<PointerEvent>) => {
           event.stopPropagation();
-          if (hoverExitTimer.current) clearTimeout(hoverExitTimer.current);
-          publishPlotHover(unit.id);
-          setHovered(true);
-          setHoverPosition([
+          onHover(unit.id, [
             event.point.x,
             event.point.y + 0.12,
             event.point.z,
@@ -226,20 +193,9 @@ function UnitMesh({
           />
         )}
       </mesh>
-      {hovered && hoverPosition && (
-        <Html position={hoverPosition} zIndexRange={[40, 0]}>
-          <div className="plot-tooltip" role="tooltip">
-            <div>
-              <strong>{unit.id}</strong>
-              <span>{unit.a.toLocaleString()} m²</span>
-            </div>
-            <p>{status[0].toUpperCase() + status.slice(1)}</p>
-          </div>
-        </Html>
-      )}
     </>
   );
-}
+});
 
 function PlotBoundaries({
   units,
@@ -736,6 +692,9 @@ function EstateScene({
     focusedAmenity,
     setFocusedAmenity,
   } = useEstate();
+  const [hoveredUnitId, setHoveredUnitId] = useState<string | null>(null);
+  const [hoverPosition, setHoverPosition] = useState<HoverPosition | null>(null);
+  const hoverClearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const center = useMemo<Point>(
     () => [model.meta.cx, model.meta.cz],
     [model.meta.cx, model.meta.cz],
@@ -746,9 +705,33 @@ function EstateScene({
     if (!item || !model.parcels[item.parcel]) return null;
     return toScene([item.x, item.z], center[0], center[1]);
   }, [focusedAmenity, model.parcels, center]);
-  const clearPlotHover = () => {
-    publishPlotHover(null);
-  };
+  const hoveredUnit = useMemo(
+    () => visibleUnits.find((unit) => unit.id === hoveredUnitId),
+    [hoveredUnitId, visibleUnits],
+  );
+  const handleUnitHover = useCallback((id: string, position: HoverPosition) => {
+    if (hoverClearTimer.current) clearTimeout(hoverClearTimer.current);
+    setHoveredUnitId((current) => current === id ? current : id);
+    setHoverPosition(position);
+  }, []);
+  const handleUnitLeave = useCallback((id: string) => {
+    if (hoverClearTimer.current) clearTimeout(hoverClearTimer.current);
+    hoverClearTimer.current = setTimeout(() => {
+      setHoveredUnitId((current) => current === id ? null : current);
+    }, 80);
+  }, []);
+  const clearPlotHover = useCallback(() => {
+    if (hoverClearTimer.current) clearTimeout(hoverClearTimer.current);
+    setHoveredUnitId(null);
+    setHoverPosition(null);
+  }, []);
+  const handleUnitSelect = useCallback((id: string) => {
+    setFocusedAmenity(null);
+    selectUnit(id);
+  }, [selectUnit, setFocusedAmenity]);
+  useEffect(() => () => {
+    if (hoverClearTimer.current) clearTimeout(hoverClearTimer.current);
+  }, []);
   return (
     <>
       {view === "map" && <color attach="background" args={["#dad7ce"]} />}
@@ -778,15 +761,33 @@ function EstateScene({
           key={unit.id}
           unit={unit}
           status={statuses[unit.id]}
+          hovered={hoveredUnitId === unit.id}
           selected={selectedId === unit.id}
           realistic={shading === "realistic"}
           center={center}
-          onSelect={(id) => {
-            setFocusedAmenity(null);
-            selectUnit(id);
-          }}
+          onHover={handleUnitHover}
+          onLeave={handleUnitLeave}
+          onSelect={handleUnitSelect}
         />
       ))}
+      {hoveredUnit && hoverPosition && (
+        <Html
+          position={hoverPosition}
+          zIndexRange={[40, 0]}
+          style={{ pointerEvents: "none" }}
+        >
+          <div className="plot-tooltip" role="tooltip">
+            <div>
+              <strong>{hoveredUnit.id}</strong>
+              <span>{hoveredUnit.a.toLocaleString()} m²</span>
+            </div>
+            <p>
+              {statuses[hoveredUnit.id][0].toUpperCase() +
+                statuses[hoveredUnit.id].slice(1)}
+            </p>
+          </div>
+        </Html>
+      )}
       <PlotBoundaries units={visibleUnits} center={center} />
       {model.roads.map((road, index) => (
         <RoadMesh key={index} road={road} center={center} />
