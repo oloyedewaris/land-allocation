@@ -11,6 +11,14 @@ const themeLabels: Record<ThemeMode, string> = {
   light: "Light",
 };
 
+function ThemeCaretIcon() {
+  return (
+    <svg className="theme-caret" viewBox="0 0 20 20" aria-hidden="true">
+      <path d="m5.75 7.75 4.25 4.5 4.25-4.5" />
+    </svg>
+  );
+}
+
 export function EstateHeader() {
   const { model, counts, visibleUnits } = useEstate();
   const [theme, setTheme] = useState<ThemeMode>("auto");
@@ -55,7 +63,8 @@ export function EstateHeader() {
             aria-expanded={themeMenuOpen}
             onClick={() => setThemeMenuOpen((open) => !open)}
           >
-            {themeLabels[theme]} <span aria-hidden="true">▾</span>
+            <span>{themeLabels[theme]}</span>
+            <ThemeCaretIcon />
           </button>
           {themeMenuOpen && (
             <div className="theme-menu" role="menu">
