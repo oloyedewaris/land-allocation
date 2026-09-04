@@ -578,22 +578,22 @@ function CanvasLabels({
     const cameraDistance = controls?.target
       ? camera.position.distanceTo(controls.target)
       : camera.position.length();
-    if (cameraDistance <= 10) {
+    if (cameraDistance <= 15) {
       for (const label of unitLabels) {
         drawLabel(label.id, label.position[0], label.position[1]);
       }
-    }
 
-    for (const amenity of amenities) {
-      const [x, z] = toScene(
-        [
-          amenity.x + amenity.labelDx * POINTS_PER_METRE,
-          amenity.z + amenity.labelDz * POINTS_PER_METRE,
-        ],
-        center[0],
-        center[1],
-      );
-      drawLabel(amenity.name, x, z, true);
+      for (const amenity of amenities) {
+        const [x, z] = toScene(
+          [
+            amenity.x + amenity.labelDx * POINTS_PER_METRE,
+            amenity.z + amenity.labelDz * POINTS_PER_METRE,
+          ],
+          center[0],
+          center[1],
+        );
+        drawLabel(amenity.name, x, z, true);
+      }
     }
   });
 
