@@ -3,6 +3,17 @@
 :root {
   --background: #111417;
   --foreground: #f8fafc;
+  --stage-top: #232529;
+  --stage-bottom: #171819;
+}
+
+@media (prefers-color-scheme: light) {
+  html:not([data-theme]) {
+    --background: #f3f1ea;
+    --foreground: #22272e;
+    --stage-top: #eef0e9;
+    --stage-bottom: #dfe3d9;
+  }
 }
 
 @theme inline {
@@ -12,7 +23,8 @@
   --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 }
 
-html {
+html,
+body {
   background: var(--background);
 }
 
@@ -49,6 +61,8 @@ html {
 html[data-theme="light"] {
   --background: #f3f1ea;
   --foreground: #22272e;
+  --stage-top: #eef0e9;
+  --stage-bottom: #dfe3d9;
 }
 
 html[data-theme="light"] .estate-app {
@@ -68,6 +82,27 @@ html[data-theme="light"] .estate-app {
   --control-text: #2f3033;
   --search-button: #18181b;
   --search-button-text: #fff;
+}
+
+@media (prefers-color-scheme: light) {
+  html:not([data-theme]) .estate-app {
+    --bg: #f3f1ea;
+    --panel: #faf8f2;
+    --panel2: #edeae1;
+    --line: #d8d3c6;
+    --text: #22272e;
+    --muted: #5d6470;
+    --faint: #8b9099;
+    --field: #f0eee7;
+    --field-line: #d8d3c6;
+    --stage-top: #eef0e9;
+    --stage-bottom: #dfe3d9;
+    --control-bg: #ffffffe6;
+    --control-line: #a9a69d;
+    --control-text: #2f3033;
+    --search-button: #18181b;
+    --search-button-text: #fff;
+  }
 }
 
 .estate-header {
@@ -200,11 +235,6 @@ html[data-theme="light"] .estate-app {
 .theme-menu button:hover,
 .theme-menu button[aria-checked="true"] {
   background: var(--panel2)
-}
-
-.theme-menu small {
-  color: var(--faint);
-  font-size: 9px
 }
 
 .estate-sidebar {
@@ -1073,7 +1103,7 @@ button {
   z-index: 30;
   display: grid;
   place-items: center;
-  background: linear-gradient(180deg, #232529 0%, #171819 100%);
+  background: linear-gradient(180deg, var(--stage-top) 0%, var(--stage-bottom) 100%);
   pointer-events: none;
 }
 

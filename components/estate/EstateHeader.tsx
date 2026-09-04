@@ -26,15 +26,13 @@ export function EstateHeader() {
   const themeMenu = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const media = window.matchMedia("(prefers-color-scheme: light)");
-    const applyTheme = () => {
-      const resolved = theme === "auto" ? (media.matches ? "light" : "dark") : theme;
-      document.documentElement.dataset.theme = resolved;
-      document.documentElement.style.colorScheme = resolved;
-    };
-    applyTheme();
-    media.addEventListener("change", applyTheme);
-    return () => media.removeEventListener("change", applyTheme);
+    if (theme === "auto") {
+      delete document.documentElement.dataset.theme;
+      document.documentElement.style.colorScheme = "light dark";
+      return;
+    }
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme;
   }, [theme]);
 
   useEffect(() => {
@@ -80,7 +78,6 @@ export function EstateHeader() {
                   }}
                 >
                   <span>{themeLabels[mode]}</span>
-                  {mode === "auto" && <small>Based on device</small>}
                 </button>
               ))}
             </div>
