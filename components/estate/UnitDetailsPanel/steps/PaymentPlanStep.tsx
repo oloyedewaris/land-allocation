@@ -1,5 +1,5 @@
 import { Loader } from "@/components/ui/Loader";
-import { formatCurrency, formatToCurrencyNaira, PaymentPlan } from "../payment-plans";
+import { formatToCurrencyNaira, PaymentPlan } from "../payment-plans";
 import { Center } from "@chakra-ui/react";
 
 interface PaymentPlanStepProps {
@@ -8,12 +8,12 @@ interface PaymentPlanStepProps {
   onBack(): void;
   onContinue(): void;
   isLoading: boolean;
-  paymentPlans: PaymentPlan[]
-  fetchedUnit: any
+  paymentPlans?: PaymentPlan[];
+  fetchedUnit?: PaymentPlan;
 }
 
 export function PaymentPlanStep({ fetchedUnit, paymentPlans, isLoading, selectedPlanId, onSelect, onBack, onContinue }: PaymentPlanStepProps) {
-  const outright_object: any = {
+  const outrightObject: PaymentPlan = {
     title: `Outright`,
     id: 'outright',
     outright: true,
@@ -40,7 +40,7 @@ export function PaymentPlanStep({ fetchedUnit, paymentPlans, isLoading, selected
               <Loader />
             </Center>
           ) : (
-            [outright_object, ...(paymentPlans || [])].map((plan) => {
+            [outrightObject, ...(paymentPlans || [])].map((plan) => {
               const selected = selectedPlanId === plan.id;
               return (
                 <label key={plan.id} className={`payment-plan-card${selected ? " selected" : ""}`}>

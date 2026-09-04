@@ -1,13 +1,10 @@
 import { Center } from "@chakra-ui/react";
-import { formatToCurrencyNaira, type PaymentPlan } from "../payment-plans";
 import { Loader } from "@/components/ui/Loader";
 
 interface ReservationSuccessProps {
   propertyName?: string;
   unitNumber?: string;
   email: string;
-  reservedBy: string;
-  plan: PaymentPlan;
   onBackToUnit(): void;
   success: boolean;
   loading: boolean;
@@ -28,8 +25,6 @@ export function ReservationSuccess({
   propertyName,
   unitNumber,
   email,
-  reservedBy,
-  plan,
   onBackToUnit,
 }: ReservationSuccessProps) {
   return loading ? (

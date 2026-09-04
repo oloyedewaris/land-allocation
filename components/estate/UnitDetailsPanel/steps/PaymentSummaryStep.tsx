@@ -6,8 +6,8 @@ interface PaymentSummaryStepProps {
   onAcceptedTermsChange(accepted: boolean): void;
   onBack(): void;
   onProceed(): void;
-  fetchedUnit: any;
-  documentUrl?: string
+  fetchedUnit?: PaymentPlan;
+  documentUrl?: string;
 }
 
 export function PaymentSummaryStep({ documentUrl, fetchedUnit, plan, acceptedTerms, onAcceptedTermsChange, onBack, onProceed }: PaymentSummaryStepProps) {

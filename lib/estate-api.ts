@@ -1,4 +1,4 @@
-import type { BackendAllocation } from "@/types/estate";
+import type { BackendAllocation, EsubDetails } from "@/types/estate";
 import { BaseURL, LOCAL_ESUB_DOMAIN } from "./constants/auth-keys";
 
 const allocationsUrl = `${BaseURL}/developers/project-allocations-with-owner/3244/`;
@@ -29,13 +29,12 @@ export async function getProjectAllocations(): Promise<BackendAllocation[]> {
   return payload.data;
 }
 
-export async function getEsubDetails(): Promise<any> {
+export async function getEsubDetails(): Promise<EsubDetails> {
   const response = await fetch(storeCheckUrl, { cache: "no-store" });
   if (!response.ok)
     throw new Error(
       `Could not load apartment allocations (${response.status} ${response.statusText}).`,
     );
 
-  const payload = (await response.json()) as any;
-  return payload;
+  return (await response.json()) as EsubDetails;
 }

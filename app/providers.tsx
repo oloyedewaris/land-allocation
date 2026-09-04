@@ -3,10 +3,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { ChakraProvider } from "@chakra-ui/react";
+import type { EsubDetails } from "@/types/estate";
 
 interface ProvidersProps {
   children: React.ReactNode;
-  esubDetails: any;
+  esubDetails: EsubDetails;
 }
 
 export function Providers({ children, esubDetails }: Readonly<ProvidersProps>) {
@@ -27,12 +28,10 @@ export function Providers({ children, esubDetails }: Readonly<ProvidersProps>) {
   );
 
   useEffect(() => {
-    if (!esubDetails) return;
-    window.sessionStorage.setItem(
-      "business_id",
-      esubDetails?.business?.business_id,
-    );
-    window.sessionStorage.setItem("store_name", esubDetails?.store?.store_name);
+    const businessId = esubDetails.business?.business_id;
+    const storeName = esubDetails.store?.store_name;
+    if (businessId) window.sessionStorage.setItem("business_id", businessId);
+    if (storeName) window.sessionStorage.setItem("store_name", storeName);
   }, [esubDetails]);
 
   return (

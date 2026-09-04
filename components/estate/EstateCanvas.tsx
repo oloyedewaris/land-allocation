@@ -4,12 +4,13 @@ import { amenities } from "@/data/amenities";
 import type {
   AmenityParcel,
   EstateUnit,
+  EsubDetails,
   Point,
   RoadSegment,
   UnitStatus,
   ViewMode,
 } from "@/types/estate";
-import { Edges, Html, MapControls, OrbitControls } from "@react-three/drei";
+import { Edges, Html, Line, MapControls, OrbitControls } from "@react-three/drei";
 import { Canvas, type ThreeEvent, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
@@ -22,7 +23,13 @@ const POINTS_PER_METRE = 0.252982;
 const ROAD_WIDTHS = [13.5, 11.5, 10, 8.5];
 const LEGACY_CAMERA_POSITION: [number, number, number] = [-22.65, 29.05, 36.97];
 const NO_RAYCAST = () => null;
-const PLOT_HOVER_EVENT = "estate-plot-hover";
+let activeHoverPlotId: string | null = null;
+const hoverListeners = new Set<(id: string | null) => void>();
+function publishPlotHover(id: string | null) {
+  if (activeHoverPlotId === id) return;
+  activeHoverPlotId = id;
+  hoverListeners.forEach((listener) => listener(id));
+}
 type NavigationAction = "up" | "right" | "down" | "left" | "zoom-in" | "zoom-out" | "home";
 type NavigationCommand = { action: NavigationAction; id: number };
 
@@ -68,34 +75,25 @@ function UnitMesh({
   const [hovered, setHovered] = useState(false);
   const [hoverPosition, setHoverPosition] = useState<[number, number, number] | null>(null);
   const hoverExitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { gl } = useThree();
   const geometry = useMemo(
     () => new THREE.ShapeGeometry(makeShape(unit.r, center[0], center[1])),
     [unit, center],
   );
   useEffect(() => () => geometry.dispose(), [geometry]);
   useEffect(() => {
-      return () => {
-        if (hoverExitTimer.current) clearTimeout(hoverExitTimer.current);
-        if (hovered && gl.domElement.dataset.hoveredPlot === unit.id) {
-          delete gl.domElement.dataset.hoveredPlot;
-          gl.domElement.classList.remove("plot-hovered");
-          gl.domElement.style.cursor = "pointer";
-        }
-      };
-  }, [gl, hovered, unit.id]);
-  useEffect(() => {
     if (!hovered) return;
-    const clearIfDifferent = (event: Event) => {
-      const nextId = (event as CustomEvent<string | null>).detail;
+    const clearIfDifferent = (nextId: string | null) => {
       if (nextId === unit.id) return;
       if (hoverExitTimer.current) clearTimeout(hoverExitTimer.current);
       setHovered(false);
       setHoverPosition(null);
     };
-    gl.domElement.addEventListener(PLOT_HOVER_EVENT, clearIfDifferent);
-    return () => gl.domElement.removeEventListener(PLOT_HOVER_EVENT, clearIfDifferent);
-  }, [gl, hovered, unit.id]);
+    hoverListeners.add(clearIfDifferent);
+    return () => {
+      hoverListeners.delete(clearIfDifferent);
+      if (hoverExitTimer.current) clearTimeout(hoverExitTimer.current);
+    };
+  }, [hovered, unit.id]);
   const color = realistic
     ? status === "allocated"
       ? "#bd7257"
@@ -116,45 +114,32 @@ function UnitMesh({
         onPointerOver={(event: ThreeEvent<PointerEvent>) => {
           event.stopPropagation();
           if (hoverExitTimer.current) clearTimeout(hoverExitTimer.current);
-          if (gl.domElement.dataset.hoveredPlot !== unit.id) {
-            gl.domElement.dispatchEvent(new CustomEvent(PLOT_HOVER_EVENT, { detail: unit.id }));
-          }
+          publishPlotHover(unit.id);
           setHovered(true);
           setHoverPosition([event.point.x, event.point.y + 0.12, event.point.z]);
-          gl.domElement.dataset.hoveredPlot = unit.id;
-          gl.domElement.classList.add("plot-hovered");
-          gl.domElement.style.cursor = "pointer";
         }}
         onPointerMove={(event: ThreeEvent<PointerEvent>) => {
           event.stopPropagation();
           if (hoverExitTimer.current) clearTimeout(hoverExitTimer.current);
-          if (gl.domElement.dataset.hoveredPlot !== unit.id) {
-            gl.domElement.dispatchEvent(new CustomEvent(PLOT_HOVER_EVENT, { detail: unit.id }));
-          }
-          gl.domElement.dataset.hoveredPlot = unit.id;
-          gl.domElement.classList.add("plot-hovered");
-          gl.domElement.style.cursor = "pointer";
+          publishPlotHover(unit.id);
+          setHovered(true);
           setHoverPosition([event.point.x, event.point.y + 0.12, event.point.z]);
         }}
         onPointerOut={() => {
           if (hoverExitTimer.current) clearTimeout(hoverExitTimer.current);
           hoverExitTimer.current = setTimeout(() => {
-            setHovered(false);
-            setHoverPosition(null);
-            if (gl.domElement.dataset.hoveredPlot === unit.id) {
-              delete gl.domElement.dataset.hoveredPlot;
-              gl.domElement.classList.remove("plot-hovered");
-              gl.domElement.style.cursor = "pointer";
-            }
+            if (activeHoverPlotId === unit.id) publishPlotHover(null);
           }, 60);
         }}
         onPointerDown={(event: ThreeEvent<PointerEvent>) => {
           event.stopPropagation();
-          gl.domElement.classList.add("plot-hovered");
-          gl.domElement.style.cursor = "pointer";
         }}
         onClick={(event: ThreeEvent<MouseEvent>) => {
           event.stopPropagation();
+          if (hoverExitTimer.current) clearTimeout(hoverExitTimer.current);
+          publishPlotHover(unit.id);
+          setHovered(true);
+          setHoverPosition([event.point.x, event.point.y + 0.12, event.point.z]);
           onSelect(unit.id);
         }}
       >
@@ -165,14 +150,17 @@ function UnitMesh({
           roughness={0.82}
           metalness={0.02}
         />
-        <Edges
-          color={hovered ? "#ffffff" : selected ? "#ffe36e" : "#343730"}
-          lineWidth={hovered ? 2.25 : 1}
-          threshold={12}
-          position={[0, 0, hovered ? 0.035 : selected ? 0.025 : 0.002]}
-          renderOrder={hovered ? 20 : selected ? 15 : 0}
-          depthTest={!hovered && !selected}
-        />
+        {(hovered || selected) && (
+          <Edges
+            color="#ffffff"
+            lineWidth={2.25}
+            threshold={12}
+            position={[0, 0, 0.035]}
+            renderOrder={20}
+            depthTest={false}
+            raycast={NO_RAYCAST}
+          />
+        )}
       </mesh>
       {hovered && hoverPosition && (
         <Html position={hoverPosition} zIndexRange={[40, 0]}>
@@ -186,6 +174,25 @@ function UnitMesh({
         </Html>
       )}
     </>
+  );
+}
+
+function PlotBoundaries({ units, center }: { units: EstateUnit[]; center: Point }) {
+  const points = useMemo(() => units.flatMap((unit) => unit.r.flatMap((point, index) => {
+    const next = unit.r[(index + 1) % unit.r.length];
+    const [x1, z1] = toScene(point, center[0], center[1]);
+    const [x2, z2] = toScene(next, center[0], center[1]);
+    return [[x1, 0.058, z1], [x2, 0.058, z2]] as [number, number, number][];
+  })), [units, center]);
+
+  return (
+    <Line
+      points={points}
+      segments
+      color="#5f645b"
+      lineWidth={0.65}
+      raycast={NO_RAYCAST}
+    />
   );
 }
 
@@ -258,7 +265,11 @@ function AmenityMesh({
         emissiveIntensity={selected ? 0.38 : 0}
         roughness={0.78}
       />
-      {selected && <Edges color="#ffffff" lineWidth={3} threshold={8} />}
+      <Edges
+        color={selected ? "#ffffff" : "#20231f"}
+        lineWidth={selected ? 3 : 2.25}
+        threshold={8}
+      />
     </mesh>
     {name && scenePosition && <AmenityLandmark name={name} color={color} position={scenePosition} />}
   </>;
@@ -307,6 +318,8 @@ function RoadMesh({ road, center }: { road: RoadSegment; center: Point }) {
 }
 
 function Trees({ units, center }: { units: EstateUnit[]; center: Point }) {
+  const trunks = useRef<THREE.InstancedMesh>(null);
+  const crowns = useRef<THREE.InstancedMesh>(null);
   const points = useMemo(
     () =>
       units
@@ -317,21 +330,32 @@ function Trees({ units, center }: { units: EstateUnit[]; center: Point }) {
         }),
     [units, center],
   );
+  useEffect(() => {
+    if (!trunks.current || !crowns.current) return;
+    const matrix = new THREE.Matrix4();
+    for (let index = 0; index < points.length; index += 1) {
+      const [x, z] = points[index];
+      matrix.makeTranslation(x, 0.3, z);
+      trunks.current.setMatrixAt(index, matrix);
+      matrix.makeTranslation(x, 0.47, z);
+      crowns.current.setMatrixAt(index, matrix);
+    }
+    trunks.current.instanceMatrix.needsUpdate = true;
+    crowns.current.instanceMatrix.needsUpdate = true;
+    trunks.current.computeBoundingSphere();
+    crowns.current.computeBoundingSphere();
+  }, [points]);
   return (
-    <group>
-      {points.map(([x, z], index) => (
-        <group key={index} position={[x, 0.3, z]}>
-          <mesh raycast={NO_RAYCAST}>
-            <cylinderGeometry args={[0.018, 0.025, 0.2, 5]} />
-            <meshStandardMaterial color="#594634" />
-          </mesh>
-          <mesh raycast={NO_RAYCAST} position={[0, 0.17, 0]}>
-            <sphereGeometry args={[0.1, 7, 5]} />
-            <meshStandardMaterial color="#357244" />
-          </mesh>
-        </group>
-      ))}
-    </group>
+    <>
+      <instancedMesh ref={trunks} args={[undefined, undefined, points.length]} raycast={NO_RAYCAST}>
+        <cylinderGeometry args={[0.018, 0.025, 0.2, 5]} />
+        <meshStandardMaterial color="#594634" />
+      </instancedMesh>
+      <instancedMesh ref={crowns} args={[undefined, undefined, points.length]} raycast={NO_RAYCAST}>
+        <sphereGeometry args={[0.1, 7, 5]} />
+        <meshStandardMaterial color="#357244" />
+      </instancedMesh>
+    </>
   );
 }
 
@@ -419,7 +443,7 @@ function CanvasLabels({ units, center }: { units: EstateUnit[]; center: Point })
 }
 
 function CameraRig({ view, focus, command }: { view: ViewMode; focus: Point | null; command: NavigationCommand | null }) {
-  const { camera } = useThree();
+  const { camera, invalidate } = useThree();
   const controls = useThree((state) => state.controls) as unknown as
     | { target: THREE.Vector3; update: () => void }
     | null
@@ -441,7 +465,8 @@ function CameraRig({ view, focus, command }: { view: ViewMode; focus: Point | nu
     targetGoal.current.set(focus[0], 0, focus[1]);
     cameraGoal.current.copy(targetGoal.current).add(direction.multiplyScalar(22));
     animating.current = true;
-  }, [camera, controls, focus]);
+    invalidate();
+  }, [camera, controls, focus, invalidate]);
   useEffect(() => {
     if (!command || !controls) return;
     animating.current = false;
@@ -478,12 +503,14 @@ function CameraRig({ view, focus, command }: { view: ViewMode; focus: Point | nu
     }
     camera.lookAt(controls.target);
     controls.update();
-  }, [camera, command, controls, view]);
+    invalidate();
+  }, [camera, command, controls, invalidate, view]);
   useFrame(() => {
     if (!animating.current || !controls) return;
     camera.position.lerp(cameraGoal.current, 0.09);
     controls.target.lerp(targetGoal.current, 0.11);
     controls.update();
+    invalidate();
     if (
       camera.position.distanceToSquared(cameraGoal.current) < 0.0025 &&
       controls.target.distanceToSquared(targetGoal.current) < 0.0025
@@ -498,7 +525,6 @@ function CameraRig({ view, focus, command }: { view: ViewMode; focus: Point | nu
 }
 
 function EstateScene({ navigationCommand }: { navigationCommand: NavigationCommand | null }) {
-  const { gl } = useThree();
   const {
     model,
     statuses,
@@ -521,9 +547,7 @@ function EstateScene({ navigationCommand }: { navigationCommand: NavigationComma
     return toScene([item.x, item.z], center[0], center[1]);
   }, [focusedAmenity, model.parcels, center]);
   const clearPlotHover = () => {
-    delete gl.domElement.dataset.hoveredPlot;
-    gl.domElement.classList.remove("plot-hovered");
-    gl.domElement.dispatchEvent(new CustomEvent(PLOT_HOVER_EVENT, { detail: null }));
+    publishPlotHover(null);
   };
   return (
     <>
@@ -551,6 +575,7 @@ function EstateScene({ navigationCommand }: { navigationCommand: NavigationComma
           }}
         />
       ))}
+      <PlotBoundaries units={visibleUnits} center={center} />
       {model.roads.map((road, index) => (
         <RoadMesh key={index} road={road} center={center} />
       ))}
@@ -590,7 +615,7 @@ function ModelReady({ onReady }: { onReady: () => void }) {
   return null;
 }
 
-export function EstateCanvas({ esubDetails }: { esubDetails: any }) {
+export function EstateCanvas({ esubDetails }: { esubDetails: EsubDetails }) {
   const { view, setView, selectUnit } = useEstate();
   const [modelReady, setModelReady] = useState(false);
   const [navigationCommand, setNavigationCommand] = useState<NavigationCommand | null>(null);
@@ -605,6 +630,7 @@ export function EstateCanvas({ esubDetails }: { esubDetails: any }) {
         </div>
       )}
       <Canvas
+        frameloop="demand"
         camera={{ position: LEGACY_CAMERA_POSITION, fov: 45, near: 0.1, far: 500 }}
         dpr={[1, 1.75]}
         gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}

@@ -11,7 +11,7 @@ function utmToLatLon(easting: number, northing: number): Point {
   const lat = phi1 - (n1 * t1 / r1) * (d ** 2 / 2 - (5 + 3 * t + 10 * c - 4 * c ** 2 - 9 * ep2) * d ** 4 / 24 + (61 + 90 * t + 298 * c + 45 * t ** 2 - 252 * ep2 - 3 * c ** 2) * d ** 6 / 720);
   const lon = lon0 + (d - (1 + 2 * t + c) * d ** 3 / 6 + (5 - 2 * c + 28 * t - 3 * c ** 2 + 8 * ep2 + 24 * t ** 2) * d ** 5 / 120) / c1;
   const sinLat = Math.sin(lat), cosLat = Math.cos(lat), radius = a / Math.sqrt(1 - e2 * sinLat ** 2);
-  let x = radius * cosLat * Math.cos(lon) - 92, y = radius * cosLat * Math.sin(lon) - 93, z = radius * (1 - e2) * sinLat + 122;
+  const x = radius * cosLat * Math.cos(lon) - 92, y = radius * cosLat * Math.sin(lon) - 93, z = radius * (1 - e2) * sinLat + 122;
   const wa = 6378137, wf = 1 / 298.257223563, we2 = wf * (2 - wf), distance = Math.hypot(x, y);
   let latitude = Math.atan2(z, distance * (1 - we2));
   for (let index = 0; index < 4; index++) { const sine = Math.sin(latitude); const nr = wa / Math.sqrt(1 - we2 * sine ** 2); latitude = Math.atan2(z + we2 * nr * sine, distance); }

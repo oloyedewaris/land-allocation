@@ -2,13 +2,13 @@ import { EstateCanvas } from "./EstateCanvas";
 import { EstateHeader } from "./EstateHeader";
 import { EstateProvider } from "./EstateProvider";
 import { EstateSidebar } from "./EstateSidebar";
-import type { BackendAllocation } from "@/types/estate";
+import type { BackendAllocation, EsubDetails } from "@/types/estate";
 
 export function EstateApplication({
   esubDetails,
   allocations,
 }: {
-  esubDetails: any;
+  esubDetails: EsubDetails;
   allocations: BackendAllocation[];
 }) {
   return (

@@ -7,6 +7,12 @@ export interface AllocationOwner {
   [key: string]: unknown;
 }
 
+export interface EsubDetails {
+  project?: { id?: number };
+  business?: { business_id?: string };
+  store?: { store_name?: string };
+}
+
 export interface BackendAllocation {
   id: number;
   name: string;

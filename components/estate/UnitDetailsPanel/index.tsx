@@ -18,6 +18,7 @@ import {
 } from "@/lib/api/investment";
 import { PaymentPlan } from "./payment-plans";
 import { useToast } from "@chakra-ui/react";
+import axios from "axios";
 import {
   loginWithOTP,
   registerUser,
@@ -32,27 +33,8 @@ import { business_id, store_name } from "@/lib/constants/store-name";
 
 import { allocationContacts, propertyProducts } from "@/data/property-products";
 import { unitCoordinates } from "@/lib/estate-coordinates";
-import type { AllocationOwner } from "@/types/estate";
+import type { AllocationOwner, EsubDetails } from "@/types/estate";
 import { useEstate } from "../EstateProvider";
-
-interface SalesContact {
-  name: string;
-  role: string;
-  whatsappLink: string;
-  email: string;
-  img: string;
-}
-
-interface ReservationSidebarProps {
-  esubDetails: any;
-  unitId?: number;
-  unitNumber: string;
-  propertyName: string;
-  allocationId: number;
-  available: boolean;
-  salesSubject: string;
-  contacts: SalesContact[];
-}
 
 const emptyAboutYou: AboutYouValues = {
   firstName: "",
@@ -86,6 +68,13 @@ function ownerValue(value: unknown) {
 }
 function formatPrice(price?: number) {
   return price ? `₦${price.toLocaleString("en-NG")}` : "Contact for pricing";
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (axios.isAxiosError<{ message?: string }>(error)) {
+    return error.response?.data?.message ?? error.message ?? fallback;
+  }
+  return error instanceof Error ? error.message : fallback;
 }
 
 function DetailRow({
@@ -141,9 +130,16 @@ function AllocationContacts() {
   );
 }
 
-export function UnitDetailsPanel({ esubDetails }: { esubDetails: any }) {
-  const { model, selectedUnit, statuses, selectUnit } = useEstate();
-  if (!selectedUnit) return null;
+export function UnitDetailsPanel({ esubDetails }: { esubDetails: EsubDetails }) {
+  const { selectedId } = useEstate();
+  return selectedId
+    ? <SelectedUnitDetailsPanel key={selectedId} esubDetails={esubDetails} />
+    : null;
+}
+
+function SelectedUnitDetailsPanel({ esubDetails }: { esubDetails: EsubDetails }) {
+  const { model, selectedUnit: selectedUnitFromContext, statuses, selectUnit } = useEstate();
+  const selectedUnit = selectedUnitFromContext!;
   const allocation = selectedUnit.allocation,
     status = statuses[selectedUnit.id],
     available = status === "available";
@@ -154,12 +150,7 @@ export function UnitDetailsPanel({ esubDetails }: { esubDetails: any }) {
   };
   const [latitude, longitude] = unitCoordinates(selectedUnit.c, model.meta);
   const mapsUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
-  const subject = encodeURIComponent(
-    `${available ? "Reserve" : "Waitlist for"} ${selectedUnit.id}`,
-  );
-
   const project = esubDetails?.project;
-  console.log("esubDetails", esubDetails);
 
   const bundleQuery = useQuery({
     queryKey: ["fetchProjectBundles"],
@@ -168,7 +159,7 @@ export function UnitDetailsPanel({ esubDetails }: { esubDetails: any }) {
   });
   const allUnits = bundleQuery?.data?.data?.results;
   const fetchedUnit = allUnits?.find(
-    (unit: any) => unit.id === selectedUnit.allocation?.unit,
+    (unit: PaymentPlan) => Number(unit.id) === selectedUnit.allocation?.unit,
   );
 
   const paymentPlansQuery = useQuery({
@@ -252,13 +243,13 @@ export function UnitDetailsPanel({ esubDetails }: { esubDetails: any }) {
   const sendCodeMutation = useMutation({
     mutationFn: () =>
       requestOTPForEmailVerification({ email: email?.trim(), verify: true }),
-    onSuccess: (res) => {
+    onSuccess: () => {
       setVerificationCode("");
       setStep("verification");
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       toast({
-        title: `${err?.response?.data?.message || "There was an error sending an OTP for authentication"}`,
+        title: getErrorMessage(err, "There was an error sending an OTP for authentication"),
         description: "",
         status: "error",
       });
@@ -362,9 +353,9 @@ export function UnitDetailsPanel({ esubDetails }: { esubDetails: any }) {
         paymentMutation.mutate(objToSubmit);
       }
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       toast({
-        title: `${err?.response?.data?.message || "There was an error updating data"}`,
+        title: getErrorMessage(err, "There was an error updating data"),
         description: "",
         status: "error",
       });
@@ -378,13 +369,10 @@ export function UnitDetailsPanel({ esubDetails }: { esubDetails: any }) {
     onSuccess: () => {
       setSuccess(true);
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       toast({
         status: "error",
-        description:
-          err?.response?.data?.message ??
-          err?.message ??
-          "Payment request failed.",
+        description: getErrorMessage(err, "Payment request failed."),
         position: "top-right",
       });
     },
@@ -448,22 +436,21 @@ export function UnitDetailsPanel({ esubDetails }: { esubDetails: any }) {
   const verifyCodeMutation = useMutation({
     mutationFn: () => loginWithOTP({ email, code: verificationCode }),
     onSuccess: (res) => {
-      const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
       if (res?.data?.token) sessionStorage.setItem("token", res?.data?.token);
 
       setTimeout(() => {
         settingsMutation.mutate();
       }, 1000);
     },
-    onError: (err: any) => {
-      if (err?.response?.status === 404) {
+    onError: (err: unknown) => {
+      if (axios.isAxiosError(err) && err.response?.status === 404) {
         setNewUser(true);
         setTimeout(() => {
           setStep("about-you");
         }, 1000);
       } else {
         return toast({
-          description: `${err?.response?.data?.message || "There was an error authenticating this account. Please try again"}`,
+          description: getErrorMessage(err, "There was an error authenticating this account. Please try again"),
           status: "error",
           duration: 5000,
         });
@@ -596,8 +583,6 @@ export function UnitDetailsPanel({ esubDetails }: { esubDetails: any }) {
           // propertyName={propertyName}
           // unitNumber={unitNumber}
           email={email}
-          reservedBy={`${aboutYou.firstName} ${aboutYou.lastName}`.trim()}
-          plan={selectedPlan}
           onBackToUnit={returnToUnit}
           success={success}
         />

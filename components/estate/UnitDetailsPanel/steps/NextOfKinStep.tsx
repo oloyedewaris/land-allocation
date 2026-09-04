@@ -18,19 +18,6 @@ interface NextOfKinStepProps {
   loading: boolean;
 }
 
-const countryCodes = [
-  { code: "+234", country: "Nigeria" },
-  { code: "+372", country: "Estonia" },
-  { code: "+233", country: "Ghana" },
-  { code: "+254", country: "Kenya" },
-  { code: "+27", country: "South Africa" },
-  { code: "+44", country: "United Kingdom" },
-  { code: "+1", country: "United States and Canada" },
-  { code: "+971", country: "United Arab Emirates" },
-  { code: "+91", country: "India" },
-  { code: "+86", country: "China" },
-];
-
 const relationships = ["Father", "Mother", "Brother", "Sister", "Partner"];
 
 function isValidEmail(email: string) {
@@ -118,14 +105,6 @@ export function NextOfKinStep({ loading, values, onChange, onBack, onContinue }:
             <label htmlFor="next-of-kin-phone">
               Phone number <span aria-hidden="true">*</span>
             </label>
-            {/* <div className="phone-number-control"> */}
-            {/* <select value={values.countryCode} onChange={(event) => update("countryCode", event.target.value)} aria-label="Country calling code" required>
-                {countryCodes.map(({ code, country }) => (
-                  <option key={`${country}-${code}`} value={code} title={country}>
-                    {code}
-                  </option>
-                ))}
-              </select> */}
             <input
               id="next-of-kin-phone"
               name="nextOfKinPhone"
@@ -137,7 +116,6 @@ export function NextOfKinStep({ loading, values, onChange, onBack, onContinue }:
               onChange={(event) => update("phoneNumber", event.target.value.replace(/[^\d ()-]/g, ""))}
               required
             />
-            {/* </div> */}
           </div>
 
           <div className="reservation-field">

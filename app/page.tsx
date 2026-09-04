@@ -1,11 +1,16 @@
 import { EstateApplication } from "@/components/estate/EstateApplication";
 import { getEsubDetails, getProjectAllocations } from "@/lib/estate-api";
+import { Providers } from "./providers";
 
 export default async function Home() {
-  const allocations = await getProjectAllocations();
-  const esubDetails = await getEsubDetails();
+  const [allocations, esubDetails] = await Promise.all([
+    getProjectAllocations(),
+    getEsubDetails(),
+  ]);
 
   return (
-    <EstateApplication esubDetails={esubDetails} allocations={allocations} />
+    <Providers esubDetails={esubDetails}>
+      <EstateApplication esubDetails={esubDetails} allocations={allocations} />
+    </Providers>
   );
 }
