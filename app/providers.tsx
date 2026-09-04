@@ -2,13 +2,20 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { ChakraProvider } from "@chakra-ui/react";
+import { ChakraProvider, extendTheme } from "@chakra-ui/react";
 import type { EsubDetails } from "@/types/estate";
 
 interface ProvidersProps {
   children: React.ReactNode;
   esubDetails: EsubDetails;
 }
+
+const chakraTheme = extendTheme({
+  config: {
+    initialColorMode: "system",
+    useSystemColorMode: true,
+  },
+});
 
 export function Providers({ children, esubDetails }: Readonly<ProvidersProps>) {
   const [queryClient] = useState(
@@ -35,7 +42,7 @@ export function Providers({ children, esubDetails }: Readonly<ProvidersProps>) {
   }, [esubDetails]);
 
   return (
-    <ChakraProvider>
+    <ChakraProvider theme={chakraTheme}>
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     </ChakraProvider>
   );

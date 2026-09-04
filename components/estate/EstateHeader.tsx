@@ -27,17 +27,18 @@ export function EstateHeader() {
 
   useEffect(() => {
     if (theme === "auto") {
-      delete document.documentElement.dataset.theme;
+      delete document.documentElement.dataset.estateTheme;
       document.documentElement.style.colorScheme = "light dark";
       return;
     }
-    document.documentElement.dataset.theme = theme;
+    document.documentElement.dataset.estateTheme = theme;
     document.documentElement.style.colorScheme = theme;
   }, [theme]);
 
   useEffect(() => {
     const closeMenu = (event: PointerEvent) => {
-      if (!themeMenu.current?.contains(event.target as Node)) setThemeMenuOpen(false);
+      if (!themeMenu.current?.contains(event.target as Node))
+        setThemeMenuOpen(false);
     };
     document.addEventListener("pointerdown", closeMenu);
     return () => document.removeEventListener("pointerdown", closeMenu);
@@ -50,9 +51,17 @@ export function EstateHeader() {
         <small>IBEFUN · OGUN STATE · 150 HA PHASE</small>
       </div>
       <div className="estate-tally">
-        <span><i className="dot available" /> <b>{counts.available.toLocaleString()}</b> Available</span>
-        <span><i className="dot allocated" /> <b>{counts.allocated.toLocaleString()}</b> Allocated</span>
-        <span><b>{visibleUnits.length.toLocaleString()}</b> Shown</span>
+        <span>
+          <i className="dot available" />{" "}
+          <b>{counts.available.toLocaleString()}</b> Available
+        </span>
+        <span>
+          <i className="dot allocated" />{" "}
+          <b>{counts.allocated.toLocaleString()}</b> Allocated
+        </span>
+        <span>
+          <b>{visibleUnits.length.toLocaleString()}</b> Shown
+        </span>
         <div className="theme-picker" ref={themeMenu}>
           <button
             className="estate-button"
