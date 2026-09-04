@@ -10,8 +10,19 @@ import type {
   UnitStatus,
   ViewMode,
 } from "@/types/estate";
-import { Edges, Html, Line, MapControls, OrbitControls } from "@react-three/drei";
-import { Canvas, type ThreeEvent, useFrame, useThree } from "@react-three/fiber";
+import {
+  Edges,
+  Html,
+  Line,
+  MapControls,
+  OrbitControls,
+} from "@react-three/drei";
+import {
+  Canvas,
+  type ThreeEvent,
+  useFrame,
+  useThree,
+} from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { useEstate } from "./EstateProvider";
@@ -22,6 +33,7 @@ const WORLD_SCALE = 0.1;
 const POINTS_PER_METRE = 0.252982;
 const ROAD_WIDTHS = [13.5, 11.5, 10, 8.5];
 const LEGACY_CAMERA_POSITION: [number, number, number] = [-22.65, 29.05, 36.97];
+const MIN_CAMERA_DISTANCE = 2;
 const NO_RAYCAST = () => null;
 let activeHoverPlotId: string | null = null;
 const hoverListeners = new Set<(id: string | null) => void>();
@@ -30,13 +42,29 @@ function publishPlotHover(id: string | null) {
   activeHoverPlotId = id;
   hoverListeners.forEach((listener) => listener(id));
 }
-type NavigationAction = "up" | "right" | "down" | "left" | "zoom-in" | "zoom-out" | "home";
+type NavigationAction =
+  | "up"
+  | "right"
+  | "down"
+  | "left"
+  | "zoom-in"
+  | "zoom-out"
+  | "home";
 type NavigationCommand = { action: NavigationAction; id: number };
 
-function CaretIcon({ direction }: { direction: "up" | "right" | "down" | "left" }) {
+function CaretIcon({
+  direction,
+}: {
+  direction: "up" | "right" | "down" | "left";
+}) {
   const rotation = { up: 0, right: 90, down: 180, left: -90 }[direction];
   return (
-    <svg className="nav-caret" viewBox="0 0 24 24" aria-hidden="true" style={{ transform: `rotate(${rotation}deg)` }}>
+    <svg
+      className="nav-caret"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      style={{ transform: `rotate(${rotation}deg)` }}
+    >
       <path d="M6.75 14.25 12 9l5.25 5.25" />
     </svg>
   );
@@ -57,6 +85,30 @@ function makeShape(ring: Point[], cx: number, cz: number) {
   return shape;
 }
 
+function polygonCentroid(ring: Point[]): Point {
+  let signedArea = 0;
+  let x = 0;
+  let z = 0;
+  for (let index = 0; index < ring.length; index += 1) {
+    const current = ring[index];
+    const next = ring[(index + 1) % ring.length];
+    const cross = current[0] * next[1] - next[0] * current[1];
+    signedArea += cross;
+    x += (current[0] + next[0]) * cross;
+    z += (current[1] + next[1]) * cross;
+  }
+  if (Math.abs(signedArea) < Number.EPSILON) {
+    return ring.reduce<Point>(
+      (sum, point) => [
+        sum[0] + point[0] / ring.length,
+        sum[1] + point[1] / ring.length,
+      ],
+      [0, 0],
+    );
+  }
+  return [x / (3 * signedArea), z / (3 * signedArea)];
+}
+
 function UnitMesh({
   unit,
   status,
@@ -73,7 +125,9 @@ function UnitMesh({
   onSelect: (id: string) => void;
 }) {
   const [hovered, setHovered] = useState(false);
-  const [hoverPosition, setHoverPosition] = useState<[number, number, number] | null>(null);
+  const [hoverPosition, setHoverPosition] = useState<
+    [number, number, number] | null
+  >(null);
   const hoverExitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const geometry = useMemo(
     () => new THREE.ShapeGeometry(makeShape(unit.r, center[0], center[1])),
@@ -116,14 +170,22 @@ function UnitMesh({
           if (hoverExitTimer.current) clearTimeout(hoverExitTimer.current);
           publishPlotHover(unit.id);
           setHovered(true);
-          setHoverPosition([event.point.x, event.point.y + 0.12, event.point.z]);
+          setHoverPosition([
+            event.point.x,
+            event.point.y + 0.12,
+            event.point.z,
+          ]);
         }}
         onPointerMove={(event: ThreeEvent<PointerEvent>) => {
           event.stopPropagation();
           if (hoverExitTimer.current) clearTimeout(hoverExitTimer.current);
           publishPlotHover(unit.id);
           setHovered(true);
-          setHoverPosition([event.point.x, event.point.y + 0.12, event.point.z]);
+          setHoverPosition([
+            event.point.x,
+            event.point.y + 0.12,
+            event.point.z,
+          ]);
         }}
         onPointerOut={() => {
           if (hoverExitTimer.current) clearTimeout(hoverExitTimer.current);
@@ -136,7 +198,11 @@ function UnitMesh({
           if (hoverExitTimer.current) clearTimeout(hoverExitTimer.current);
           publishPlotHover(unit.id);
           setHovered(true);
-          setHoverPosition([event.point.x, event.point.y + 0.12, event.point.z]);
+          setHoverPosition([
+            event.point.x,
+            event.point.y + 0.12,
+            event.point.z,
+          ]);
           onSelect(unit.id);
         }}
       >
@@ -153,7 +219,7 @@ function UnitMesh({
             color="#ffffff"
             lineWidth={2.25}
             threshold={12}
-            position={[0, 0, 0.035]}
+            position={[0, 0, 0.004]}
             renderOrder={20}
             depthTest={false}
             raycast={NO_RAYCAST}
@@ -175,20 +241,51 @@ function UnitMesh({
   );
 }
 
-function PlotBoundaries({ units, center }: { units: EstateUnit[]; center: Point }) {
-  const points = useMemo(() => units.flatMap((unit) => unit.r.flatMap((point, index) => {
-    const next = unit.r[(index + 1) % unit.r.length];
-    const [x1, z1] = toScene(point, center[0], center[1]);
-    const [x2, z2] = toScene(next, center[0], center[1]);
-    return [[x1, 0.058, z1], [x2, 0.058, z2]] as [number, number, number][];
-  })), [units, center]);
+function PlotBoundaries({
+  units,
+  center,
+}: {
+  units: EstateUnit[];
+  center: Point;
+}) {
+  const { camera } = useThree();
+  const controls = useThree((state) => state.controls) as unknown as
+    | { target: THREE.Vector3 }
+    | null
+    | undefined;
+  const [lineWidth, setLineWidth] = useState(1);
+  const points = useMemo(
+    () =>
+      units.flatMap((unit) =>
+        unit.r.flatMap((point, index) => {
+          const next = unit.r[(index + 1) % unit.r.length];
+          const [x1, z1] = toScene(point, center[0], center[1]);
+          const [x2, z2] = toScene(next, center[0], center[1]);
+          return [
+            [x1, 0.058, z1],
+            [x2, 0.058, z2],
+          ] as [number, number, number][];
+        }),
+      ),
+    [units, center],
+  );
+
+  useFrame(() => {
+    const cameraDistance = controls?.target
+      ? camera.position.distanceTo(controls.target)
+      : camera.position.length();
+    const nextWidth = Math.round(
+      THREE.MathUtils.clamp(20 / cameraDistance, 1, 10) * 10,
+    ) / 10;
+    setLineWidth((current) => current === nextWidth ? current : nextWidth);
+  });
 
   return (
     <Line
       points={points}
       segments
       color="#5f645b"
-      lineWidth={0.65}
+      lineWidth={lineWidth}
       raycast={NO_RAYCAST}
     />
   );
@@ -255,32 +352,90 @@ function AmenityMesh({
     () => landmarkPosition && toScene(landmarkPosition, center[0], center[1]),
     [landmarkPosition, center],
   );
-  return <>
-    <mesh raycast={NO_RAYCAST} geometry={geometry} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.012, 0]}>
-      <meshStandardMaterial
-        color={color}
-        emissive={selected ? color : "#000000"}
-        emissiveIntensity={selected ? 0.38 : 0}
-        roughness={0.78}
-      />
-      <Edges
-        color={selected ? "#ffffff" : "#20231f"}
-        lineWidth={selected ? 3 : 2.25}
-        threshold={8}
-      />
-    </mesh>
-    {name && scenePosition && <AmenityLandmark name={name} color={color} position={scenePosition} />}
-  </>;
+  return (
+    <>
+      <mesh
+        raycast={NO_RAYCAST}
+        geometry={geometry}
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, 0.012, 0]}
+      >
+        <meshStandardMaterial
+          color={color}
+          emissive={selected ? color : "#000000"}
+          emissiveIntensity={selected ? 0.38 : 0}
+          roughness={0.78}
+        />
+        <Edges
+          color={selected ? "#ffffff" : "#20231f"}
+          lineWidth={selected ? 3 : 2.25}
+          threshold={8}
+        />
+      </mesh>
+      {name && scenePosition && (
+        <AmenityLandmark name={name} color={color} position={scenePosition} />
+      )}
+    </>
+  );
 }
 
-function AmenityLandmark({ name, color, position }: { name: string; color: string; position: Point }) {
+function AmenityLandmark({
+  name,
+  color,
+  position,
+}: {
+  name: string;
+  color: string;
+  position: Point;
+}) {
   if (name.includes("Park") || name.includes("Playground")) {
-    return <group position={[position[0], 0.3, position[1]]}>{[-0.22, 0, 0.22].map((x, index) => <group key={x} position={[x, 0, index === 1 ? -0.14 : 0.09]}><mesh raycast={NO_RAYCAST}><cylinderGeometry args={[0.018, 0.025, 0.2, 5]} /><meshStandardMaterial color="#70543f" /></mesh><mesh raycast={NO_RAYCAST} position={[0, 0.17, 0]}><sphereGeometry args={[0.1, 7, 5]} /><meshStandardMaterial color="#527b43" /></mesh></group>)}</group>;
+    return (
+      <group position={[position[0], 0.3, position[1]]}>
+        {[-0.22, 0, 0.22].map((x, index) => (
+          <group key={x} position={[x, 0, index === 1 ? -0.14 : 0.09]}>
+            <mesh raycast={NO_RAYCAST}>
+              <cylinderGeometry args={[0.018, 0.025, 0.2, 5]} />
+              <meshStandardMaterial color="#70543f" />
+            </mesh>
+            <mesh raycast={NO_RAYCAST} position={[0, 0.17, 0]}>
+              <sphereGeometry args={[0.1, 7, 5]} />
+              <meshStandardMaterial color="#527b43" />
+            </mesh>
+          </group>
+        ))}
+      </group>
+    );
   }
   if (name.includes("Pool")) {
-    return <group position={[position[0], 0.34, position[1]]}><mesh raycast={NO_RAYCAST}><boxGeometry args={[0.7, 0.06, 0.38]} /><meshStandardMaterial color="#52a0bd" roughness={0.3} /></mesh><mesh raycast={NO_RAYCAST} position={[0.48, 0.2, 0]}><boxGeometry args={[0.28, 0.4, 0.32]} /><meshStandardMaterial color="#e9e4d9" /></mesh></group>;
+    return (
+      <group position={[position[0], 0.34, position[1]]}>
+        <mesh raycast={NO_RAYCAST}>
+          <boxGeometry args={[0.7, 0.06, 0.38]} />
+          <meshStandardMaterial color="#52a0bd" roughness={0.3} />
+        </mesh>
+        <mesh raycast={NO_RAYCAST} position={[0.48, 0.2, 0]}>
+          <boxGeometry args={[0.28, 0.4, 0.32]} />
+          <meshStandardMaterial color="#e9e4d9" />
+        </mesh>
+      </group>
+    );
   }
-  return <group position={[position[0], 0.39, position[1]]}><mesh raycast={NO_RAYCAST}><boxGeometry args={[0.58, 0.38, 0.43]} /><meshStandardMaterial color="#e9e4d9" roughness={0.88} /></mesh><mesh raycast={NO_RAYCAST} position={[0, 0.26, 0]} rotation={[0, Math.PI / 4, 0]}><coneGeometry args={[0.39, 0.17, 4]} /><meshStandardMaterial color={color} roughness={0.8} /></mesh></group>;
+  return (
+    <group position={[position[0], 0.39, position[1]]}>
+      <mesh raycast={NO_RAYCAST}>
+        <boxGeometry args={[0.58, 0.38, 0.43]} />
+        <meshStandardMaterial color="#e9e4d9" roughness={0.88} />
+      </mesh>
+      <mesh
+        raycast={NO_RAYCAST}
+        position={[0, 0.26, 0]}
+        rotation={[0, Math.PI / 4, 0]}
+      >
+        <coneGeometry args={[0.39, 0.17, 4]} />
+        <meshStandardMaterial color={color} roughness={0.8} />
+      </mesh>
+    </group>
+  );
 }
 
 function RoadMesh({ road, center }: { road: RoadSegment; center: Point }) {
@@ -345,11 +500,19 @@ function Trees({ units, center }: { units: EstateUnit[]; center: Point }) {
   }, [points]);
   return (
     <>
-      <instancedMesh ref={trunks} args={[undefined, undefined, points.length]} raycast={NO_RAYCAST}>
+      <instancedMesh
+        ref={trunks}
+        args={[undefined, undefined, points.length]}
+        raycast={NO_RAYCAST}
+      >
         <cylinderGeometry args={[0.018, 0.025, 0.2, 5]} />
         <meshStandardMaterial color="#594634" />
       </instancedMesh>
-      <instancedMesh ref={crowns} args={[undefined, undefined, points.length]} raycast={NO_RAYCAST}>
+      <instancedMesh
+        ref={crowns}
+        args={[undefined, undefined, points.length]}
+        raycast={NO_RAYCAST}
+      >
         <sphereGeometry args={[0.1, 7, 5]} />
         <meshStandardMaterial color="#357244" />
       </instancedMesh>
@@ -357,7 +520,13 @@ function Trees({ units, center }: { units: EstateUnit[]; center: Point }) {
   );
 }
 
-function CanvasLabels({ units, center }: { units: EstateUnit[]; center: Point }) {
+function CanvasLabels({
+  units,
+  center,
+}: {
+  units: EstateUnit[];
+  center: Point;
+}) {
   const { camera, gl } = useThree();
   const controls = useThree((state) => state.controls) as unknown as
     | { target: THREE.Vector3 }
@@ -365,6 +534,14 @@ function CanvasLabels({ units, center }: { units: EstateUnit[]; center: Point })
     | undefined;
   const layer = useRef<HTMLCanvasElement | null>(null);
   const projected = useMemo(() => new THREE.Vector3(), []);
+  const unitLabels = useMemo(
+    () =>
+      units.map((unit) => ({
+        id: unit.id,
+        position: toScene(polygonCentroid(unit.r), center[0], center[1]),
+      })),
+    [units, center],
+  );
 
   useEffect(() => {
     const parent = gl.domElement.parentElement;
@@ -401,16 +578,19 @@ function CanvasLabels({ units, center }: { units: EstateUnit[]; center: Point })
     context.textBaseline = "middle";
 
     const drawLabel = (text: string, x: number, z: number, amenity = false) => {
-      projected.set(x, amenity ? 0.58 : 0.16, z).project(camera);
+      projected.set(x, amenity ? 0.58 : 0.062, z).project(camera);
       if (projected.z < -1 || projected.z > 1) return;
       const screenX = (projected.x * 0.5 + 0.5) * width;
       const screenY = (-projected.y * 0.5 + 0.5) * height;
-      if (screenX < 0 || screenX > width || screenY < 0 || screenY > height) return;
+      if (screenX < 0 || screenX > width || screenY < 0 || screenY > height)
+        return;
       context.font = amenity
         ? "600 10px ui-monospace, SFMono-Regular, Consolas, monospace"
         : "8px ui-monospace, SFMono-Regular, Consolas, monospace";
-      context.lineWidth = amenity ? 3 : 2;
-      context.strokeStyle = amenity ? "rgba(238, 235, 220, .9)" : "rgba(235, 232, 218, .72)";
+      context.lineWidth = amenity ? 1.1 : 0.65;
+      context.strokeStyle = amenity
+        ? "rgba(238, 235, 220, .3)"
+        : "rgba(235, 232, 218, .2)";
       context.fillStyle = "#20251f";
       context.strokeText(text, screenX, screenY);
       context.fillText(text, screenX, screenY);
@@ -419,10 +599,9 @@ function CanvasLabels({ units, center }: { units: EstateUnit[]; center: Point })
     const cameraDistance = controls?.target
       ? camera.position.distanceTo(controls.target)
       : camera.position.length();
-    if (cameraDistance <= 20) {
-      for (const unit of units) {
-        const [x, z] = toScene(unit.c, center[0], center[1]);
-        drawLabel(unit.id, x, z);
+    if (cameraDistance <= 10) {
+      for (const label of unitLabels) {
+        drawLabel(label.id, label.position[0], label.position[1]);
       }
     }
 
@@ -442,7 +621,15 @@ function CanvasLabels({ units, center }: { units: EstateUnit[]; center: Point })
   return null;
 }
 
-function CameraRig({ view, focus, command }: { view: ViewMode; focus: Point | null; command: NavigationCommand | null }) {
+function CameraRig({
+  view,
+  focus,
+  command,
+}: {
+  view: ViewMode;
+  focus: Point | null;
+  command: NavigationCommand | null;
+}) {
   const { camera, invalidate } = useThree();
   const controls = useThree((state) => state.controls) as unknown as
     | { target: THREE.Vector3; update: () => void }
@@ -463,7 +650,9 @@ function CameraRig({ view, focus, command }: { view: ViewMode; focus: Point | nu
     if (!focus || !controls) return;
     const direction = camera.position.clone().sub(controls.target).normalize();
     targetGoal.current.set(focus[0], 0, focus[1]);
-    cameraGoal.current.copy(targetGoal.current).add(direction.multiplyScalar(22));
+    cameraGoal.current
+      .copy(targetGoal.current)
+      .add(direction.multiplyScalar(22));
     animating.current = true;
     invalidate();
   }, [camera, controls, focus, invalidate]);
@@ -479,7 +668,7 @@ function CameraRig({ view, focus, command }: { view: ViewMode; focus: Point | nu
       const currentDistance = offset.length();
       const nextDistance = THREE.MathUtils.clamp(
         currentDistance * (command.action === "zoom-in" ? 0.8 : 1.25),
-        12,
+        MIN_CAMERA_DISTANCE,
         220,
       );
       camera.position.copy(controls.target).add(offset.setLength(nextDistance));
@@ -488,15 +677,22 @@ function CameraRig({ view, focus, command }: { view: ViewMode; focus: Point | nu
       forward.y = 0;
       if (forward.lengthSq() < 0.0001) forward.set(0, 0, -1);
       forward.normalize();
-      const right = new THREE.Vector3().crossVectors(forward, camera.up).normalize();
-      const step = THREE.MathUtils.clamp(camera.position.distanceTo(controls.target) * 0.12, 1.5, 8);
-      const movement = command.action === "up"
-        ? forward
-        : command.action === "down"
-          ? forward.multiplyScalar(-1)
-          : command.action === "right"
-            ? right
-            : right.multiplyScalar(-1);
+      const right = new THREE.Vector3()
+        .crossVectors(forward, camera.up)
+        .normalize();
+      const step = THREE.MathUtils.clamp(
+        camera.position.distanceTo(controls.target) * 0.12,
+        1.5,
+        8,
+      );
+      const movement =
+        command.action === "up"
+          ? forward
+          : command.action === "down"
+            ? forward.multiplyScalar(-1)
+            : command.action === "right"
+              ? right
+              : right.multiplyScalar(-1);
       movement.multiplyScalar(step);
       camera.position.add(movement);
       controls.target.add(movement);
@@ -524,7 +720,11 @@ function CameraRig({ view, focus, command }: { view: ViewMode; focus: Point | nu
   return null;
 }
 
-function EstateScene({ navigationCommand }: { navigationCommand: NavigationCommand | null }) {
+function EstateScene({
+  navigationCommand,
+}: {
+  navigationCommand: NavigationCommand | null;
+}) {
   const {
     model,
     statuses,
@@ -559,7 +759,19 @@ function EstateScene({ navigationCommand }: { navigationCommand: NavigationComma
       <Ground rings={model.site} center={center} />
       {model.parcels.map((parcel, index) => {
         const amenity = amenities.find((item) => item.parcel === index);
-        return <AmenityMesh key={index} parcel={parcel} center={center} color={amenity?.color ?? "#668653"} name={amenity?.name} landmarkPosition={amenity ? [amenity.x, amenity.z] : undefined} selected={amenity ? amenities.indexOf(amenity) === focusedAmenity : false} />;
+        return (
+          <AmenityMesh
+            key={index}
+            parcel={parcel}
+            center={center}
+            color={amenity?.color ?? "#668653"}
+            name={amenity?.name}
+            landmarkPosition={amenity ? [amenity.x, amenity.z] : undefined}
+            selected={
+              amenity ? amenities.indexOf(amenity) === focusedAmenity : false
+            }
+          />
+        );
       })}
       {visibleUnits.map((unit) => (
         <UnitMesh
@@ -588,7 +800,7 @@ function EstateScene({ navigationCommand }: { navigationCommand: NavigationComma
           onChange={clearPlotHover}
           enableRotate={false}
           maxDistance={220}
-          minDistance={12}
+          minDistance={MIN_CAMERA_DISTANCE}
         />
       ) : (
         <OrbitControls
@@ -597,7 +809,7 @@ function EstateScene({ navigationCommand }: { navigationCommand: NavigationComma
           maxPolarAngle={Math.PI / 2.08}
           minPolarAngle={0.08}
           maxDistance={220}
-          minDistance={12}
+          minDistance={MIN_CAMERA_DISTANCE}
           target={[0, 0, 0]}
         />
       )}
@@ -618,12 +830,18 @@ function ModelReady({ onReady }: { onReady: () => void }) {
 export function EstateCanvas({ esubDetails }: { esubDetails: EsubDetails }) {
   const { view, setView } = useEstate();
   const [modelReady, setModelReady] = useState(false);
-  const [navigationCommand, setNavigationCommand] = useState<NavigationCommand | null>(null);
-  const navigate = (action: NavigationAction) => setNavigationCommand({ action, id: Date.now() });
+  const [navigationCommand, setNavigationCommand] =
+    useState<NavigationCommand | null>(null);
+  const navigate = (action: NavigationAction) =>
+    setNavigationCommand({ action, id: Date.now() });
   return (
     <main className="estate-stage">
       {!modelReady && (
-        <div className="estate-model-loader" role="status" aria-label="Loading estate model">
+        <div
+          className="estate-model-loader"
+          role="status"
+          aria-label="Loading estate model"
+        >
           <div className="estate-loader-card">
             <div className="loader" />
           </div>
@@ -631,18 +849,45 @@ export function EstateCanvas({ esubDetails }: { esubDetails: EsubDetails }) {
       )}
       <Canvas
         frameloop="demand"
-        camera={{ position: LEGACY_CAMERA_POSITION, fov: 45, near: 0.1, far: 500 }}
+        camera={{
+          position: LEGACY_CAMERA_POSITION,
+          fov: 45,
+          near: 0.1,
+          far: 500,
+        }}
         dpr={[1, 1.75]}
-        gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
+        gl={{
+          antialias: true,
+          alpha: true,
+          powerPreference: "high-performance",
+        }}
       >
         <EstateScene navigationCommand={navigationCommand} />
         <ModelReady onReady={() => setModelReady(true)} />
       </Canvas>
       <div className="nav-pad">
-        <button aria-label="Zoom in" title="Zoom in" onClick={() => navigate("zoom-in")}>+</button>
-        <button aria-label="Pan up" title="Pan up" onClick={() => navigate("up")}><CaretIcon direction="up" /></button>
+        <button
+          aria-label="Zoom in"
+          title="Zoom in"
+          onClick={() => navigate("zoom-in")}
+        >
+          +
+        </button>
+        <button
+          aria-label="Pan up"
+          title="Pan up"
+          onClick={() => navigate("up")}
+        >
+          <CaretIcon direction="up" />
+        </button>
         <div>
-          <button aria-label="Pan left" title="Pan left" onClick={() => navigate("left")}><CaretIcon direction="left" /></button>
+          <button
+            aria-label="Pan left"
+            title="Pan left"
+            onClick={() => navigate("left")}
+          >
+            <CaretIcon direction="left" />
+          </button>
           <button
             className="home"
             aria-label="Recenter model"
@@ -651,10 +896,28 @@ export function EstateCanvas({ esubDetails }: { esubDetails: EsubDetails }) {
           >
             ⌂
           </button>
-          <button aria-label="Pan right" title="Pan right" onClick={() => navigate("right")}><CaretIcon direction="right" /></button>
+          <button
+            aria-label="Pan right"
+            title="Pan right"
+            onClick={() => navigate("right")}
+          >
+            <CaretIcon direction="right" />
+          </button>
         </div>
-        <button aria-label="Pan down" title="Pan down" onClick={() => navigate("down")}><CaretIcon direction="down" /></button>
-        <button aria-label="Zoom out" title="Zoom out" onClick={() => navigate("zoom-out")}>−</button>
+        <button
+          aria-label="Pan down"
+          title="Pan down"
+          onClick={() => navigate("down")}
+        >
+          <CaretIcon direction="down" />
+        </button>
+        <button
+          aria-label="Zoom out"
+          title="Zoom out"
+          onClick={() => navigate("zoom-out")}
+        >
+          −
+        </button>
       </div>
       <div className="canvas-hud">
         Drag orbit · Right drag pan · Scroll zoom · Home recenters
