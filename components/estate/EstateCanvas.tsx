@@ -403,6 +403,24 @@ function RoadMesh({ road, center }: { road: RoadSegment; center: Point }) {
   const shoulder = 2 * POINTS_PER_METRE * WORLD_SCALE;
   const roadWidth = halfWidth * 2;
   const shoulderWidth = (halfWidth + shoulder) * 2;
+  const dashLength = 0.32;
+  const dashGap = 0.22;
+  const dashCount = road[4] <= 1
+    ? Math.max(1, Math.floor((length + dashGap) / (dashLength + dashGap)))
+    : 0;
+  const dashes = useRef<THREE.InstancedMesh>(null);
+  useEffect(() => {
+    if (!dashes.current || dashCount === 0) return;
+    const matrix = new THREE.Matrix4();
+    const spacing = dashLength + dashGap;
+    const firstX = -((dashCount - 1) * spacing) / 2;
+    for (let index = 0; index < dashCount; index += 1) {
+      matrix.makeTranslation(firstX + index * spacing, 0, 0);
+      dashes.current.setMatrixAt(index, matrix);
+    }
+    dashes.current.instanceMatrix.needsUpdate = true;
+    dashes.current.computeBoundingSphere();
+  }, [dashCount]);
   return (
     <group
       position={[(ax + bx) / 2, 0.02, (az + bz) / 2]}
@@ -417,10 +435,15 @@ function RoadMesh({ road, center }: { road: RoadSegment; center: Point }) {
         <meshStandardMaterial color="#3b3d43" roughness={0.96} />
       </mesh>
       {road[4] <= 1 && (
-        <mesh raycast={NO_RAYCAST} position={[0, 0.021, 0]}>
-          <boxGeometry args={[length, 0.004, 0.045]} />
+        <instancedMesh
+          ref={dashes}
+          args={[undefined, undefined, dashCount]}
+          position={[0, 0.021, 0]}
+          raycast={NO_RAYCAST}
+        >
+          <boxGeometry args={[dashLength, 0.004, 0.045]} />
           <meshBasicMaterial color="#e9e5d5" transparent opacity={0.72} />
-        </mesh>
+        </instancedMesh>
       )}
     </group>
   );
