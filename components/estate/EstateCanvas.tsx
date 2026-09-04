@@ -146,6 +146,7 @@ function UnitMesh({
           emissiveIntensity={0}
           roughness={0.82}
           metalness={0.02}
+          side={THREE.DoubleSide}
         />
         {(hovered || selected) && (
           <Edges
@@ -584,7 +585,7 @@ function EstateScene({ navigationCommand }: { navigationCommand: NavigationComma
       {view === "map" ? (
         <MapControls
           makeDefault
-          onStart={clearPlotHover}
+          onChange={clearPlotHover}
           enableRotate={false}
           maxDistance={220}
           minDistance={12}
@@ -592,7 +593,7 @@ function EstateScene({ navigationCommand }: { navigationCommand: NavigationComma
       ) : (
         <OrbitControls
           makeDefault
-          onStart={clearPlotHover}
+          onChange={clearPlotHover}
           maxPolarAngle={Math.PI / 2.08}
           minPolarAngle={0.08}
           maxDistance={220}
@@ -615,7 +616,7 @@ function ModelReady({ onReady }: { onReady: () => void }) {
 }
 
 export function EstateCanvas({ esubDetails }: { esubDetails: EsubDetails }) {
-  const { view, setView, selectUnit } = useEstate();
+  const { view, setView } = useEstate();
   const [modelReady, setModelReady] = useState(false);
   const [navigationCommand, setNavigationCommand] = useState<NavigationCommand | null>(null);
   const navigate = (action: NavigationAction) => setNavigationCommand({ action, id: Date.now() });
@@ -633,7 +634,6 @@ export function EstateCanvas({ esubDetails }: { esubDetails: EsubDetails }) {
         camera={{ position: LEGACY_CAMERA_POSITION, fov: 45, near: 0.1, far: 500 }}
         dpr={[1, 1.75]}
         gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
-        onPointerMissed={() => selectUnit(null)}
       >
         <EstateScene navigationCommand={navigationCommand} />
         <ModelReady onReady={() => setModelReady(true)} />
