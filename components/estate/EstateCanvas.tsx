@@ -133,9 +133,6 @@ function UnitMesh({
         }}
         onPointerDown={(event: ThreeEvent<PointerEvent>) => {
           event.stopPropagation();
-        }}
-        onClick={(event: ThreeEvent<MouseEvent>) => {
-          event.stopPropagation();
           if (hoverExitTimer.current) clearTimeout(hoverExitTimer.current);
           publishPlotHover(unit.id);
           setHovered(true);
@@ -144,9 +141,9 @@ function UnitMesh({
         }}
       >
         <meshStandardMaterial
-          color={selected ? "#f4d35e" : color}
-          emissive={selected ? "#d6a928" : "#000000"}
-          emissiveIntensity={selected ? 0.24 : 0}
+          color={color}
+          emissive="#000000"
+          emissiveIntensity={0}
           roughness={0.82}
           metalness={0.02}
         />
@@ -373,6 +370,8 @@ function CanvasLabels({ units, center }: { units: EstateUnit[]; center: Point })
     if (!parent) return;
     const canvas = document.createElement("canvas");
     canvas.className = "estate-label-layer";
+    canvas.style.pointerEvents = "none";
+    canvas.setAttribute("aria-hidden", "true");
     parent.appendChild(canvas);
     layer.current = canvas;
     return () => {
