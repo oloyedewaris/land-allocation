@@ -201,6 +201,62 @@ html[data-estate-theme="light"] .estate-app {
   background: #9aa0a3
 }
 
+.admin-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none
+}
+
+.admin-toggle input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none
+}
+
+.admin-toggle i {
+  position: relative;
+  width: 34px;
+  height: 19px;
+  flex: 0 0 34px;
+  border: 1px solid var(--control-line);
+  border-radius: 999px;
+  background: var(--panel2);
+  transition: background-color .15s ease, border-color .15s ease
+}
+
+.admin-toggle i::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--faint);
+  transition: transform .15s ease, background-color .15s ease
+}
+
+.admin-toggle input:checked + i {
+  border-color: var(--brand);
+  background: #244a2c
+}
+
+.admin-toggle input:checked + i::after {
+  background: #64b877;
+  transform: translateX(15px)
+}
+
+.admin-toggle input:focus-visible + i {
+  outline: 2px solid #6aa9ff;
+  outline-offset: 2px
+}
+
 .estate-button {
   display: inline-flex;
   align-items: center;
@@ -1164,5 +1220,296 @@ button {
 @keyframes l24 {
   to {
     transform: rotate(1turn)
+  }
+}
+
+/* Compact selected-unit inspector used only while Admin mode is enabled. */
+.admin-unit-panel {
+  position: fixed;
+  z-index: 95;
+  top: 66px;
+  right: 12px;
+  width: min(340px, calc(100vw - 24px));
+  max-height: calc(100dvh - 78px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid #363a40;
+  border-radius: 6px;
+  background: rgba(17, 19, 21, .96);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .42);
+  color: #d8dbe0;
+  font: 10px ui-monospace, "SFMono-Regular", Consolas, monospace;
+  animation: admin-panel-enter .16s ease-out;
+  scrollbar-color: #555a61 transparent;
+  scrollbar-width: thin
+}
+
+@keyframes admin-panel-enter {
+  from { opacity: 0; transform: translateX(12px) }
+  to { opacity: 1; transform: translateX(0) }
+}
+
+.admin-unit-header {
+  position: relative;
+  padding: 13px 12px 10px
+}
+
+.admin-unit-header h2 {
+  margin: 0 34px 7px 0;
+  color: #e3e5e8;
+  font-size: 17px;
+  line-height: 1;
+  letter-spacing: -.3px
+}
+
+.admin-unit-header>button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #8d9299;
+  font-size: 16px;
+  line-height: 24px
+}
+
+.admin-unit-header>button:hover { color: #fff }
+
+.admin-status-badge,
+.admin-mini-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 21px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  color: #fff;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: capitalize
+}
+
+.admin-status-badge.available { background: #1ea960 }
+.admin-status-badge.allocated,
+.admin-mini-status { background: #d5483a }
+.admin-status-badge.reserved { background: #a77b25 }
+
+.admin-unit-rows,
+.admin-buyer-rows { margin: 0; padding: 0 12px }
+
+.admin-unit-row {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 12px;
+  min-height: 18px;
+  align-items: start
+}
+
+.admin-unit-row dt {
+  color: #747980;
+  line-height: 1.35
+}
+
+.admin-unit-row dd {
+  min-width: 0;
+  margin: 0;
+  color: #e0e2e5;
+  line-height: 1.35;
+  text-align: right;
+  overflow-wrap: anywhere
+}
+
+.admin-account-value {
+  display: inline-block;
+  line-height: 1.5
+}
+
+.admin-entitlements {
+  margin: 10px 12px 12px;
+  padding: 9px;
+  border: 1px solid rgba(45, 158, 82, .58);
+  border-radius: 6px;
+  background: rgba(28, 91, 49, .15)
+}
+
+.admin-entitlements strong {
+  color: #3ca55d;
+  font-size: 9px;
+  font-weight: 500;
+  text-transform: uppercase
+}
+
+.admin-entitlements p {
+  margin: 5px 0 0;
+  color: #d5d8dc;
+  font-family: Arial, Helvetica, sans-serif;
+  line-height: 1.45
+}
+
+.admin-buyer {
+  margin-top: 12px;
+  padding: 12px 0 0;
+  border-top: 1px solid #292d32
+}
+
+.admin-panel-label {
+  margin: 0 12px 10px;
+  color: #737880;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .8px;
+  text-transform: uppercase
+}
+
+.admin-buyer-profile {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 0 12px 11px
+}
+
+.admin-buyer-avatar {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 50%;
+  background: #943a54;
+  color: #fff;
+  font: 700 11px Arial, Helvetica, sans-serif
+}
+
+.admin-buyer-profile strong {
+  display: block;
+  color: #dfe1e4;
+  font: 600 11px Arial, Helvetica, sans-serif
+}
+
+.admin-buyer-profile small {
+  display: block;
+  margin-top: 3px;
+  color: #747980;
+  font-size: 8px
+}
+
+.admin-mini-status {
+  min-height: 17px;
+  padding: 2px 6px;
+  font-size: 8px
+}
+
+.admin-payment-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 10px 12px 12px
+}
+
+.admin-payment-grid>div {
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid #34383d;
+  border-radius: 5px;
+  background: rgba(22, 24, 27, .88)
+}
+
+.admin-payment-grid small {
+  display: block;
+  margin-bottom: 5px;
+  color: #70757c;
+  font-size: 8px;
+  text-transform: uppercase
+}
+
+.admin-payment-grid strong {
+  display: block;
+  color: #dedfe2;
+  font-size: 10px;
+  overflow-wrap: anywhere
+}
+
+.admin-payment-history {
+  padding: 0 12px 12px
+}
+
+.admin-payment-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid #34383d;
+  border-radius: 5px;
+  background: #111315
+}
+
+.admin-payment-tabs button {
+  min-width: 0;
+  min-height: 25px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: #858a91;
+  font: 9px Arial, Helvetica, sans-serif
+}
+
+.admin-payment-tabs button.active {
+  background: #25282c;
+  color: #e0e2e5
+}
+
+.admin-payment-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 38px;
+  padding: 8px 1px 0;
+  color: #777c83
+}
+
+.admin-payment-entry strong {
+  color: #dfe1e4;
+  font-weight: 600;
+  text-align: right
+}
+
+.admin-unit-actions {
+  display: grid;
+  gap: 8px;
+  padding: 0 12px 12px
+}
+
+.admin-unit-actions a,
+.admin-unit-actions button {
+  display: grid;
+  min-height: 35px;
+  place-items: center;
+  border: 1px solid #34383d;
+  border-radius: 4px;
+  background: #25282c;
+  color: #d9dce0;
+  font: 10px Arial, Helvetica, sans-serif;
+  text-align: center;
+  text-decoration: none
+}
+
+.admin-unit-actions a:hover,
+.admin-unit-actions button:hover {
+  border-color: #555b63;
+  background: #2d3136;
+  color: #fff
+}
+
+@media(max-width:600px) {
+  .admin-unit-panel {
+    top: 62px;
+    right: 8px;
+    width: calc(100vw - 16px);
+    max-height: calc(100dvh - 70px)
   }
 }

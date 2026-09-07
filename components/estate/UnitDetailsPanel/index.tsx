@@ -35,6 +35,7 @@ import { allocationContacts, propertyProducts } from "@/data/property-products";
 import { unitCoordinates } from "@/lib/estate-coordinates";
 import type { AllocationOwner, EsubDetails } from "@/types/estate";
 import { useEstate } from "../EstateProvider";
+import { AdminUnitDetailsPanel } from "./AdminUnitDetailsPanel";
 
 const emptyAboutYou: AboutYouValues = {
   firstName: "",
@@ -111,7 +112,7 @@ function AllocationContacts() {
       <p className="drawer-section-label">Your allocation contact</p>
       {allocationContacts.map((contact) => (
         <article className="contact-card" key={contact.email}>
-          <span className="contact-avatar">{contact.initials}</span>
+          <img className="contact-avatar" src={contact.path} />
           <div>
             <h4>{contact.name}</h4>
             <p>{contact.role}</p>
@@ -130,15 +131,29 @@ function AllocationContacts() {
   );
 }
 
-export function UnitDetailsPanel({ esubDetails }: { esubDetails: EsubDetails }) {
-  const { selectedId } = useEstate();
-  return selectedId
-    ? <SelectedUnitDetailsPanel key={selectedId} esubDetails={esubDetails} />
-    : null;
+export function UnitDetailsPanel({
+  esubDetails,
+}: {
+  esubDetails: EsubDetails;
+}) {
+  const { selectedId, admin } = useEstate();
+  if (selectedId && admin) return <AdminUnitDetailsPanel key={selectedId} />;
+  return selectedId ? (
+    <SelectedUnitDetailsPanel key={selectedId} esubDetails={esubDetails} />
+  ) : null;
 }
 
-function SelectedUnitDetailsPanel({ esubDetails }: { esubDetails: EsubDetails }) {
-  const { model, selectedUnit: selectedUnitFromContext, statuses, selectUnit } = useEstate();
+function SelectedUnitDetailsPanel({
+  esubDetails,
+}: {
+  esubDetails: EsubDetails;
+}) {
+  const {
+    model,
+    selectedUnit: selectedUnitFromContext,
+    statuses,
+    selectUnit,
+  } = useEstate();
   const selectedUnit = selectedUnitFromContext!;
   const allocation = selectedUnit.allocation,
     status = statuses[selectedUnit.id],
@@ -249,7 +264,10 @@ function SelectedUnitDetailsPanel({ esubDetails }: { esubDetails: EsubDetails })
     },
     onError: (err: unknown) => {
       toast({
-        title: getErrorMessage(err, "There was an error sending an OTP for authentication"),
+        title: getErrorMessage(
+          err,
+          "There was an error sending an OTP for authentication",
+        ),
         description: "",
         status: "error",
       });
@@ -450,7 +468,10 @@ function SelectedUnitDetailsPanel({ esubDetails }: { esubDetails: EsubDetails })
         }, 1000);
       } else {
         return toast({
-          description: getErrorMessage(err, "There was an error authenticating this account. Please try again"),
+          description: getErrorMessage(
+            err,
+            "There was an error authenticating this account. Please try again",
+          ),
           status: "error",
           duration: 5000,
         });

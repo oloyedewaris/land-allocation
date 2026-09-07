@@ -44,6 +44,8 @@ interface EstateContextValue {
   selectUnit: (id: string | null) => void;
   setUnitStatus: (id: string, status: UnitStatus) => void;
   counts: Record<UnitStatus, number>;
+  admin: boolean;
+  setAdmin: (value: boolean) => void;
   shading: ShadingMode;
   setShading: (value: ShadingMode) => void;
   view: ViewMode;
@@ -73,6 +75,7 @@ export function EstateProvider({ children, allocations }: { children: ReactNode;
   const statuses = useMemo(() => ({ ...apiStatuses, ...statusOverrides }), [apiStatuses, statusOverrides]);
   const [filters, setFilters] = useState(defaultFilters);
   const [selectedId, selectUnit] = useState<string | null>(null);
+  const [admin, setAdmin] = useState(false);
   const [shading, setShading] = useState<ShadingMode>("realistic");
   const [view, setView] = useState<ViewMode>("aerial");
   const [focusedAmenity, setFocusedAmenity] = useState<number | null>(null);
@@ -129,6 +132,8 @@ export function EstateProvider({ children, allocations }: { children: ReactNode;
         selectUnit,
         setUnitStatus,
         counts,
+        admin,
+        setAdmin,
         shading,
         setShading,
         view,

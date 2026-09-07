@@ -20,7 +20,7 @@ function ThemeCaretIcon() {
 }
 
 export function EstateHeader() {
-  const { model, counts, visibleUnits } = useEstate();
+  const { model, counts, visibleUnits, admin, setAdmin } = useEstate();
   const [theme, setTheme] = useState<ThemeMode>("auto");
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const themeMenu = useRef<HTMLDivElement>(null);
@@ -62,6 +62,15 @@ export function EstateHeader() {
         <span>
           <b>{visibleUnits.length.toLocaleString()}</b> Shown
         </span>
+        <label className="admin-toggle">
+          <input
+            type="checkbox"
+            checked={admin}
+            onChange={(event) => setAdmin(event.target.checked)}
+          />
+          <i aria-hidden="true" />
+          <span>Admin</span>
+        </label>
         <div className="theme-picker" ref={themeMenu}>
           <button
             className="estate-button"
