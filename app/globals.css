@@ -46,6 +46,15 @@ body {
   --control-text: #c7c8ca;
   --search-button: #ddd;
   --search-button-text: #202226;
+  --admin-panel-bg: rgba(17, 19, 21, .96);
+  --admin-panel-border: #363a40;
+  --admin-panel-surface: #25282c;
+  --admin-panel-surface-deep: #111315;
+  --admin-panel-hover: #2d3136;
+  --admin-panel-text: #e0e2e5;
+  --admin-panel-muted: #858a91;
+  --admin-panel-faint: #747980;
+  --admin-panel-shadow: rgba(0, 0, 0, .42);
   display: grid;
   grid-template-columns: 252px 1fr;
   grid-template-rows: 56px 1fr;
@@ -103,6 +112,15 @@ html[data-estate-theme="dark"] .estate-app {
     --control-text: #2f3033;
     --search-button: #18181b;
     --search-button-text: #fff;
+    --admin-panel-bg: rgba(250, 248, 242, .97);
+    --admin-panel-border: #c9c4b8;
+    --admin-panel-surface: #edeae1;
+    --admin-panel-surface-deep: #f3f1ea;
+    --admin-panel-hover: #e2ded3;
+    --admin-panel-text: #22272e;
+    --admin-panel-muted: #5d6470;
+    --admin-panel-faint: #7b8088;
+    --admin-panel-shadow: rgba(45, 42, 34, .2);
   }
 }
 
@@ -136,6 +154,15 @@ html[data-estate-theme="light"] .estate-app {
   --control-text: #2f3033;
   --search-button: #18181b;
   --search-button-text: #fff;
+  --admin-panel-bg: rgba(250, 248, 242, .97);
+  --admin-panel-border: #c9c4b8;
+  --admin-panel-surface: #edeae1;
+  --admin-panel-surface-deep: #f3f1ea;
+  --admin-panel-hover: #e2ded3;
+  --admin-panel-text: #22272e;
+  --admin-panel-muted: #5d6470;
+  --admin-panel-faint: #7b8088;
+  --admin-panel-shadow: rgba(45, 42, 34, .2);
 }
 
 
@@ -1233,14 +1260,14 @@ button {
   max-height: calc(100dvh - 78px);
   overflow-y: auto;
   overscroll-behavior: contain;
-  border: 1px solid #363a40;
+  border: 1px solid var(--admin-panel-border);
   border-radius: 6px;
-  background: rgba(17, 19, 21, .96);
-  box-shadow: 0 18px 50px rgba(0, 0, 0, .42);
-  color: #d8dbe0;
+  background: var(--admin-panel-bg);
+  box-shadow: 0 18px 50px var(--admin-panel-shadow);
+  color: var(--admin-panel-text);
   font: 10px ui-monospace, "SFMono-Regular", Consolas, monospace;
   animation: admin-panel-enter .16s ease-out;
-  scrollbar-color: #555a61 transparent;
+  scrollbar-color: var(--admin-panel-muted) transparent;
   scrollbar-width: thin
 }
 
@@ -1256,7 +1283,7 @@ button {
 
 .admin-unit-header h2 {
   margin: 0 34px 7px 0;
-  color: #e3e5e8;
+  color: var(--admin-panel-text);
   font-size: 17px;
   line-height: 1;
   letter-spacing: -.3px
@@ -1271,12 +1298,12 @@ button {
   padding: 0;
   border: 0;
   background: transparent;
-  color: #8d9299;
+  color: var(--admin-panel-muted);
   font-size: 16px;
   line-height: 24px
 }
 
-.admin-unit-header>button:hover { color: #fff }
+.admin-unit-header>button:hover { color: var(--admin-panel-text) }
 
 .admin-status-badge,
 .admin-mini-status {
@@ -1309,14 +1336,14 @@ button {
 }
 
 .admin-unit-row dt {
-  color: #747980;
+  color: var(--admin-panel-faint);
   line-height: 1.35
 }
 
 .admin-unit-row dd {
   min-width: 0;
   margin: 0;
-  color: #e0e2e5;
+  color: var(--admin-panel-text);
   line-height: 1.35;
   text-align: right;
   overflow-wrap: anywhere
@@ -1344,7 +1371,7 @@ button {
 
 .admin-entitlements p {
   margin: 5px 0 0;
-  color: #d5d8dc;
+  color: var(--admin-panel-text);
   font-family: Arial, Helvetica, sans-serif;
   line-height: 1.45
 }
@@ -1352,12 +1379,12 @@ button {
 .admin-buyer {
   margin-top: 12px;
   padding: 12px 0 0;
-  border-top: 1px solid #292d32
+  border-top: 1px solid var(--admin-panel-border)
 }
 
 .admin-panel-label {
   margin: 0 12px 10px;
-  color: #737880;
+  color: var(--admin-panel-faint);
   font-size: 9px;
   font-weight: 700;
   letter-spacing: .8px;
@@ -1385,14 +1412,14 @@ button {
 
 .admin-buyer-profile strong {
   display: block;
-  color: #dfe1e4;
+  color: var(--admin-panel-text);
   font: 600 11px Arial, Helvetica, sans-serif
 }
 
 .admin-buyer-profile small {
   display: block;
   margin-top: 3px;
-  color: #747980;
+  color: var(--admin-panel-faint);
   font-size: 8px
 }
 
@@ -1412,22 +1439,22 @@ button {
 .admin-payment-grid>div {
   min-width: 0;
   padding: 8px;
-  border: 1px solid #34383d;
+  border: 1px solid var(--admin-panel-border);
   border-radius: 5px;
-  background: rgba(22, 24, 27, .88)
+  background: var(--admin-panel-surface-deep)
 }
 
 .admin-payment-grid small {
   display: block;
   margin-bottom: 5px;
-  color: #70757c;
+  color: var(--admin-panel-faint);
   font-size: 8px;
   text-transform: uppercase
 }
 
 .admin-payment-grid strong {
   display: block;
-  color: #dedfe2;
+  color: var(--admin-panel-text);
   font-size: 10px;
   overflow-wrap: anywhere
 }
@@ -1441,9 +1468,9 @@ button {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 3px;
   padding: 3px;
-  border: 1px solid #34383d;
+  border: 1px solid var(--admin-panel-border);
   border-radius: 5px;
-  background: #111315
+  background: var(--admin-panel-surface-deep)
 }
 
 .admin-payment-tabs button {
@@ -1453,13 +1480,13 @@ button {
   border: 0;
   border-radius: 3px;
   background: transparent;
-  color: #858a91;
+  color: var(--admin-panel-muted);
   font: 9px Arial, Helvetica, sans-serif
 }
 
 .admin-payment-tabs button.active {
-  background: #25282c;
-  color: #e0e2e5
+  background: var(--admin-panel-surface);
+  color: var(--admin-panel-text)
 }
 
 .admin-payment-entry {
@@ -1469,11 +1496,11 @@ button {
   gap: 12px;
   min-height: 38px;
   padding: 8px 1px 0;
-  color: #777c83
+  color: var(--admin-panel-faint)
 }
 
 .admin-payment-entry strong {
-  color: #dfe1e4;
+  color: var(--admin-panel-text);
   font-weight: 600;
   text-align: right
 }
@@ -1489,10 +1516,10 @@ button {
   display: grid;
   min-height: 35px;
   place-items: center;
-  border: 1px solid #34383d;
+  border: 1px solid var(--admin-panel-border);
   border-radius: 4px;
-  background: #25282c;
-  color: #d9dce0;
+  background: var(--admin-panel-surface);
+  color: var(--admin-panel-text);
   font: 10px Arial, Helvetica, sans-serif;
   text-align: center;
   text-decoration: none
@@ -1500,9 +1527,9 @@ button {
 
 .admin-unit-actions a:hover,
 .admin-unit-actions button:hover {
-  border-color: #555b63;
-  background: #2d3136;
-  color: #fff
+  border-color: var(--admin-panel-muted);
+  background: var(--admin-panel-hover);
+  color: var(--admin-panel-text)
 }
 
 @media(max-width:600px) {
