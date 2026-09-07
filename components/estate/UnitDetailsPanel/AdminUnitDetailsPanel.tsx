@@ -188,12 +188,14 @@ export function AdminUnitDetailsPanel() {
 
       <footer className="admin-unit-actions">
         <a href={mapsUrl} target="_blank" rel="noreferrer">Open in Google Maps</a>
-        <button
-          type="button"
-          onClick={() => setUnitStatus(selectedUnit.id, allocated ? "available" : "allocated")}
-        >
-          Mark {allocated ? "available" : "allocated"}
-        </button>
+        {!allocated ? (
+          <button
+            type="button"
+            onClick={() => setUnitStatus(selectedUnit.id, "allocated")}
+          >
+            Mark allocated
+          </button>
+        ) : null}
       </footer>
     </aside>
   );
