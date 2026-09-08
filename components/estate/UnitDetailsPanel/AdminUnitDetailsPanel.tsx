@@ -30,7 +30,7 @@ function BuyerDetails({ allocation }: { allocation?: BackendAllocation }) {
     enabled: !!allocation?.id,
   });
   const allocationData = allocationDetailsQuery?.data?.data?.data;
-  const { buyer, equity, financials } = allocationData || {};
+  const { buyer, equity, financials, unit } = allocationData || {};
   console.log("allocationData", allocationData);
 
   return allocationDetailsQuery?.isLoading ? (
@@ -53,7 +53,8 @@ function BuyerDetails({ allocation }: { allocation?: BackendAllocation }) {
         {/* <span className="admin-mini-status">Allocated</span> */}
       </div>
       <dl className="admin-buyer-rows">
-        <Row label="Allocation" value={allocation?.unit_name} />
+        <Row label="Allocation" value={allocation?.name} />
+        <Row label="Unit title" value={unit?.unit_title} />
         {/* <Row
           label="Account"
           value={
@@ -64,7 +65,10 @@ function BuyerDetails({ allocation }: { allocation?: BackendAllocation }) {
             </span>
           }
         /> */}
-        <Row label="Payment type" value="Outright" />
+        <Row
+          label="Payment type"
+          value={!equity?.payment_plan ? "Outright" : "Payment Plan"}
+        />
         <Row label="Email" value={buyer?.email} />
       </dl>
       <div className="admin-payment-grid">
