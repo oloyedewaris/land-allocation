@@ -19,7 +19,7 @@ function ThemeCaretIcon() {
   );
 }
 
-export function EstateHeader() {
+export function EstateHeader({ valid }: { valid: boolean }) {
   const { model, counts, visibleUnits, admin, setAdmin } = useEstate();
   const [theme, setTheme] = useState<ThemeMode>("auto");
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
@@ -44,6 +44,10 @@ export function EstateHeader() {
     return () => document.removeEventListener("pointerdown", closeMenu);
   }, []);
 
+  useEffect(() => {
+    setAdmin(valid);
+  }, [valid]);
+
   return (
     <header className="estate-header">
       <div className="estate-brand">
@@ -51,26 +55,30 @@ export function EstateHeader() {
         <small>IBEFUN · OGUN STATE · 150 HA PHASE</small>
       </div>
       <div className="estate-tally">
-        <span>
-          <i className="dot available" />{" "}
-          <b>{counts.available.toLocaleString()}</b> Available
-        </span>
-        <span>
-          <i className="dot allocated" />{" "}
-          <b>{counts.allocated.toLocaleString()}</b> Allocated
-        </span>
-        <span>
-          <b>{visibleUnits.length.toLocaleString()}</b> Shown
-        </span>
-        <label className="admin-toggle">
-          <input
-            type="checkbox"
-            checked={admin}
-            onChange={(event) => setAdmin(event.target.checked)}
-          />
-          <i aria-hidden="true" />
-          <span>Admin</span>
-        </label>
+        {valid && (
+          <>
+            <span>
+              <i className="dot available" />{" "}
+              <b>{counts.available.toLocaleString()}</b> Available
+            </span>
+            <span>
+              <i className="dot allocated" />{" "}
+              <b>{counts.allocated.toLocaleString()}</b> Allocated
+            </span>
+            <span>
+              <b>{visibleUnits.length.toLocaleString()}</b> Shown
+            </span>
+            <label className="admin-toggle">
+              <input
+                type="checkbox"
+                checked={admin}
+                onChange={(event) => setAdmin(event.target.checked)}
+              />
+              <i aria-hidden="true" />
+              <span>Admin</span>
+            </label>
+          </>
+        )}
         <div className="theme-picker" ref={themeMenu}>
           <button
             className="estate-button"

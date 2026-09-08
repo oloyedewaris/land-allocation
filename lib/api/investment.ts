@@ -2,11 +2,15 @@ import { BaseURL } from "../constants/auth-keys";
 import { axiosInstance } from "./axiosInstance";
 
 export function fetchProjectBundles(projectId?: number) {
-  return axiosInstance.get(`${BaseURL}/investment/project-bundles/?project_id=${projectId}`);
+  return axiosInstance.get(
+    `${BaseURL}/investment/project-bundles/?project_id=${projectId}`,
+  );
 }
 
 export function fetchBundlePaymentPlans(bundleId?: number) {
-  return axiosInstance.get(`${BaseURL}/investment/bundle-paymentplans/?bundle_id=${bundleId}`);
+  return axiosInstance.get(
+    `${BaseURL}/investment/bundle-paymentplans/?bundle_id=${bundleId}`,
+  );
 }
 
 export function fetchProjectDocumentsQuery(query: string) {
@@ -15,4 +19,10 @@ export function fetchProjectDocumentsQuery(query: string) {
 
 export function makeEquityPayment(body: Record<string, unknown>) {
   return axiosInstance.post(`${BaseURL}/investment/equity/?e_sub=true`, body);
+}
+
+export function getAdminAllocationDetails(allocation_id: number) {
+  return axiosInstance.get(
+    `${BaseURL}/developers/3d/allocations/${allocation_id}`,
+  );
 }

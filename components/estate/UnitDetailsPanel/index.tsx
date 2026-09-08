@@ -71,7 +71,7 @@ function formatPrice(price?: number) {
   return price ? `₦${price.toLocaleString("en-NG")}` : "Contact for pricing";
 }
 
-function getErrorMessage(error: unknown, fallback: string) {
+export function getErrorMessage(error: unknown, fallback: string) {
   if (axios.isAxiosError<{ message?: string }>(error)) {
     return error.response?.data?.message ?? error.message ?? fallback;
   }

@@ -2,11 +2,17 @@ import { BaseURL } from "../constants/auth-keys";
 import { business_id } from "../constants/store-name";
 import { axiosInstance } from "./axiosInstance";
 
-export function requestOTPForEmailVerification(data: { email: string; verify?: boolean }) {
-  return axiosInstance.post(`${BaseURL.replace("v2", "v1")}/user/create_totp_email_extended`, {
-    ...data,
-    business_id: business_id(),
-  });
+export function requestOTPForEmailVerification(data: {
+  email: string;
+  verify?: boolean;
+}) {
+  return axiosInstance.post(
+    `${BaseURL.replace("v2", "v1")}/user/create_totp_email_extended`,
+    {
+      ...data,
+      business_id: business_id(),
+    },
+  );
 }
 
 export function loginWithOTP(data: { email: string; code: string }) {
@@ -31,5 +37,15 @@ export interface RegisterUserPayload {
 }
 
 export function registerUser(data: RegisterUserPayload, passToken = true) {
-  return axiosInstance.post(`${BaseURL}/store/customers/${passToken ? "?verify=true" : ""}`, data);
+  return axiosInstance.post(
+    `${BaseURL}/store/customers/${passToken ? "?verify=true" : ""}`,
+    data,
+  );
+}
+
+export function verifyMagicLink(data: { token: string }) {
+  return axiosInstance.post(
+    `${BaseURL}/developers/3d/verify-magic-link/`,
+    data,
+  );
 }
