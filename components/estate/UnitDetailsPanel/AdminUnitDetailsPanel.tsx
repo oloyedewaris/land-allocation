@@ -55,6 +55,12 @@ function BuyerDetails({ allocation }: { allocation?: BackendAllocation }) {
       <dl className="admin-buyer-rows">
         <Row label="Allocation" value={allocation?.name} />
         <Row label="Unit title" value={unit?.unit_title} />
+        {equity?.payment_plan?.duration_in_months && (
+          <Row
+            label="Payment plan"
+            value={`${equity?.payment_plan?.duration_in_months} month payment plan`}
+          />
+        )}
         {/* <Row
           label="Account"
           value={
@@ -84,10 +90,14 @@ function BuyerDetails({ allocation }: { allocation?: BackendAllocation }) {
           <small>Outstanding</small>
           <strong>{financials?.outstanding_formatted}</strong>
         </div>
-        <div>
-          <small>Plan</small>
-          <strong>{equity?.plan}</strong>
-        </div>
+        {/* {equity?.payment_plan?.duration_in_months && (
+          <div>
+            <small>Plan</small>
+            <strong>
+              {equity?.payment_plan?.duration_in_months} payment plan
+            </strong>
+          </div>
+        )} */}
       </div>
       <div className="admin-payment-history">
         <div

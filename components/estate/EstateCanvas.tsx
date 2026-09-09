@@ -34,6 +34,7 @@ const POINTS_PER_METRE = 0.252982;
 const ROAD_WIDTHS = [13.5, 11.5, 10, 8.5];
 const LEGACY_CAMERA_POSITION: [number, number, number] = [-22.65, 29.05, 36.97];
 const MIN_CAMERA_DISTANCE = 2;
+const MAX_CAMERA_DISTANCE = 75;
 const NO_RAYCAST = () => null;
 type HoverPosition = [number, number, number];
 type NavigationAction =
@@ -619,7 +620,7 @@ function CameraRig({
   const animating = useRef(false);
   useEffect(() => {
     if (view === "aerial") camera.position.set(...LEGACY_CAMERA_POSITION);
-    else camera.position.set(0, 145, view === "map" ? 0.01 : 0.1);
+    else camera.position.set(0, MAX_CAMERA_DISTANCE, view === "map" ? 0.01 : 0.1);
     controls?.target.set(0, 0, 0);
     camera.lookAt(0, 0, 0);
     controls?.update();
@@ -640,7 +641,7 @@ function CameraRig({
     animating.current = false;
     if (command.action === "home") {
       if (view === "aerial") camera.position.set(...LEGACY_CAMERA_POSITION);
-      else camera.position.set(0, 145, view === "map" ? 0.01 : 0.1);
+      else camera.position.set(0, MAX_CAMERA_DISTANCE, view === "map" ? 0.01 : 0.1);
       controls.target.set(0, 0, 0);
     } else if (command.action === "zoom-in" || command.action === "zoom-out") {
       const offset = camera.position.clone().sub(controls.target);
@@ -648,7 +649,7 @@ function CameraRig({
       const nextDistance = THREE.MathUtils.clamp(
         currentDistance * (command.action === "zoom-in" ? 0.8 : 1.25),
         MIN_CAMERA_DISTANCE,
-        220,
+        MAX_CAMERA_DISTANCE,
       );
       camera.position.copy(controls.target).add(offset.setLength(nextDistance));
     } else {
@@ -811,7 +812,7 @@ function EstateScene({
           </div>
         </Html>
       )}
-      <PlotBoundaries units={visibleUnits} center={center} />
+      <PlotBoundaries units={model.plots} center={center} />
       {model.roads.map((road, index) => (
         <RoadMesh key={index} road={road} center={center} />
       ))}
@@ -823,7 +824,7 @@ function EstateScene({
           makeDefault
           onChange={clearPlotHover}
           enableRotate={false}
-          maxDistance={220}
+          maxDistance={MAX_CAMERA_DISTANCE}
           minDistance={MIN_CAMERA_DISTANCE}
         />
       ) : (
@@ -832,7 +833,7 @@ function EstateScene({
           onChange={clearPlotHover}
           maxPolarAngle={Math.PI / 2.08}
           minPolarAngle={0.08}
-          maxDistance={220}
+          maxDistance={MAX_CAMERA_DISTANCE}
           minDistance={MIN_CAMERA_DISTANCE}
           target={[0, 0, 0]}
         />
