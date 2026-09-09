@@ -34,7 +34,7 @@ function BuyerDetails({ allocation }: { allocation?: BackendAllocation }) {
   console.log("allocationData", allocationData);
 
   return allocationDetailsQuery?.isLoading ? (
-    <Center minH={"30vh"}>
+    <Center minH={"28vh"}>
       <Loader />
     </Center>
   ) : (
@@ -58,7 +58,7 @@ function BuyerDetails({ allocation }: { allocation?: BackendAllocation }) {
         {equity?.payment_plan?.duration_in_months && (
           <Row
             label="Payment plan"
-            value={`${equity?.payment_plan?.duration_in_months} month payment plan`}
+            value={`${equity?.payment_plan?.duration_in_months} month plan`}
           />
         )}
         {/* <Row
@@ -71,10 +71,6 @@ function BuyerDetails({ allocation }: { allocation?: BackendAllocation }) {
             </span>
           }
         /> */}
-        <Row
-          label="Payment type"
-          value={!equity?.payment_plan ? "Outright" : "Payment Plan"}
-        />
         <Row label="Email" value={buyer?.email} />
       </dl>
       <div className="admin-payment-grid">
@@ -86,10 +82,12 @@ function BuyerDetails({ allocation }: { allocation?: BackendAllocation }) {
           <small>Total paid</small>
           <strong>{financials?.total_paid_formatted}</strong>
         </div>
-        <div>
-          <small>Outstanding</small>
-          <strong>{financials?.outstanding_formatted}</strong>
-        </div>
+        {equity?.payment_plan && (
+          <div>
+            <small>Outstanding</small>
+            <strong>{financials?.outstanding_formatted}</strong>
+          </div>
+        )}
         {/* {equity?.payment_plan?.duration_in_months && (
           <div>
             <small>Plan</small>
