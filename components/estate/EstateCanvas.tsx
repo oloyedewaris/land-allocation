@@ -230,9 +230,10 @@ function PlotBoundaries({
     const cameraDistance = controls?.target
       ? camera.position.distanceTo(controls.target)
       : camera.position.length();
+    // Coarser steps prevent a React update for every tiny camera movement.
     const nextWidth = Math.round(
-      THREE.MathUtils.clamp(20 / cameraDistance, 1, 10) * 10,
-    ) / 10;
+      THREE.MathUtils.clamp(20 / cameraDistance, 1, 10) * 2,
+    ) / 2;
     setLineWidth((current) => current === nextWidth ? current : nextWidth);
   });
 
@@ -716,8 +717,9 @@ function EstateScene({
     setFocusedAmenity,
   } = useEstate();
   const [hoveredUnitId, setHoveredUnitId] = useState<string | null>(null);
-  const [hoverPosition, setHoverPosition] = useState<HoverPosition | null>(null);
+  const hoverAnchor = useRef<THREE.Group>(null);
   const hoverClearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const invalidate = useThree((state) => state.invalidate);
   const center = useMemo<Point>(
     () => [model.meta.cx, model.meta.cz],
     [model.meta.cx, model.meta.cz],
@@ -734,9 +736,10 @@ function EstateScene({
   );
   const handleUnitHover = useCallback((id: string, position: HoverPosition) => {
     if (hoverClearTimer.current) clearTimeout(hoverClearTimer.current);
+    hoverAnchor.current?.position.set(...position);
+    invalidate();
     setHoveredUnitId((current) => current === id ? current : id);
-    setHoverPosition(position);
-  }, []);
+  }, [invalidate]);
   const handleUnitLeave = useCallback((id: string) => {
     if (hoverClearTimer.current) clearTimeout(hoverClearTimer.current);
     hoverClearTimer.current = setTimeout(() => {
@@ -746,7 +749,6 @@ function EstateScene({
   const clearPlotHover = useCallback(() => {
     if (hoverClearTimer.current) clearTimeout(hoverClearTimer.current);
     setHoveredUnitId(null);
-    setHoverPosition(null);
   }, []);
   const handleUnitSelect = useCallback((id: string) => {
     setFocusedAmenity(null);
@@ -793,9 +795,9 @@ function EstateScene({
           onSelect={handleUnitSelect}
         />
       ))}
-      {hoveredUnit && hoverPosition && (
-        <Html
-          position={hoverPosition}
+      <group ref={hoverAnchor}>
+        {hoveredUnit && (
+          <Html
           zIndexRange={[40, 0]}
           style={{ pointerEvents: "none" }}
         >
@@ -809,8 +811,9 @@ function EstateScene({
                 statuses[hoveredUnit.id].slice(1)}
             </p>
           </div>
-        </Html>
-      )}
+          </Html>
+        )}
+      </group>
       <PlotBoundaries units={model.plots} center={center} />
       {model.roads.map((road, index) => (
         <RoadMesh key={index} road={road} center={center} />
@@ -821,7 +824,7 @@ function EstateScene({
       {view === "map" ? (
         <MapControls
           makeDefault
-          onChange={clearPlotHover}
+          onStart={clearPlotHover}
           enableRotate={false}
           maxDistance={220}
           minDistance={MIN_CAMERA_DISTANCE}
@@ -829,7 +832,7 @@ function EstateScene({
       ) : (
         <OrbitControls
           makeDefault
-          onChange={clearPlotHover}
+          onStart={clearPlotHover}
           maxPolarAngle={Math.PI / 2.08}
           minPolarAngle={0.08}
           maxDistance={220}
@@ -903,7 +906,7 @@ export function EstateCanvas({ esubDetails }: { esubDetails: EsubDetails }) {
           near: 0.1,
           far: 500,
         }}
-        dpr={[1, 1.75]}
+        dpr={[1, 1.5]}
         gl={{
           antialias: true,
           alpha: true,

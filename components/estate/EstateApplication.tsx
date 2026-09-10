@@ -31,13 +31,7 @@ export function EstateApplication({
       sessionStorage.setItem("refresh_token", res.data?.refresh_token);
       setValid(!!res.data.valid);
     },
-    onError: (err: unknown) => {
-      toast({
-        title: getErrorMessage(err, "There was an error fetching user"),
-        description: "",
-        status: "error",
-      });
-    },
+    onError: (err: unknown) => {},
   });
 
   useEffect(() => {

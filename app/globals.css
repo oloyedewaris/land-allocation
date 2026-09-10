@@ -269,17 +269,17 @@ html[data-estate-theme="light"] .estate-app {
   transition: transform .15s ease, background-color .15s ease
 }
 
-.admin-toggle input:checked + i {
+.admin-toggle input:checked+i {
   border-color: var(--brand);
   background: #244a2c
 }
 
-.admin-toggle input:checked + i::after {
+.admin-toggle input:checked+i::after {
   background: #64b877;
   transform: translateX(15px)
 }
 
-.admin-toggle input:focus-visible + i {
+.admin-toggle input:focus-visible+i {
   outline: 2px solid #6aa9ff;
   outline-offset: 2px
 }
@@ -1200,7 +1200,10 @@ button {
   border: 8px solid #0000;
   border-right-color: #1ea45c;
   position: relative;
-  animation: l24 1s infinite linear
+  animation: l24 1s infinite linear;
+  /* will-change: transform;
+  backface-visibility: hidden;
+  contain: layout paint */
 }
 
 .loader:before,
@@ -1211,7 +1214,9 @@ button {
   border-radius: 50%;
   border: inherit;
   animation: inherit;
-  animation-duration: 2s
+  animation-duration: 2s;
+  /* will-change: transform;
+  backface-visibility: hidden */
 }
 
 .estate-model-loader {
@@ -1260,8 +1265,15 @@ button {
 }
 
 @keyframes admin-panel-enter {
-  from { opacity: 0; transform: translateX(12px) }
-  to { opacity: 1; transform: translateX(0) }
+  from {
+    opacity: 0;
+    transform: translateX(12px)
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0)
+  }
 }
 
 .admin-unit-header {
@@ -1291,7 +1303,9 @@ button {
   line-height: 24px
 }
 
-.admin-unit-header>button:hover { color: var(--admin-panel-text) }
+.admin-unit-header>button:hover {
+  color: var(--admin-panel-text)
+}
 
 .admin-status-badge,
 .admin-mini-status {
@@ -1307,13 +1321,24 @@ button {
   text-transform: capitalize
 }
 
-.admin-status-badge.available { background: #1ea960 }
+.admin-status-badge.available {
+  background: #1ea960
+}
+
 .admin-status-badge.allocated,
-.admin-mini-status { background: #d5483a }
-.admin-status-badge.reserved { background: #a77b25 }
+.admin-mini-status {
+  background: #d5483a
+}
+
+.admin-status-badge.reserved {
+  background: #a77b25
+}
 
 .admin-unit-rows,
-.admin-buyer-rows { margin: 0; padding: 0 12px }
+.admin-buyer-rows {
+  margin: 0;
+  padding: 0 12px
+}
 
 .admin-unit-row {
   display: grid;
