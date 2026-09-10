@@ -27,6 +27,7 @@ export function EstateApplication({
   const verifyLinkMutation = useMutation({
     mutationFn: verifyMagicLink,
     onSuccess: async (res) => {
+      sessionStorage.clear();
       sessionStorage.setItem("token", res.data?.token);
       sessionStorage.setItem("refresh_token", res.data?.refresh_token);
       setValid(!!res.data.valid);

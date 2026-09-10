@@ -31,7 +31,6 @@ function BuyerDetails({ allocation }: { allocation?: BackendAllocation }) {
   });
   const allocationData = allocationDetailsQuery?.data?.data?.data;
   const { buyer, equity, financials, unit } = allocationData || {};
-  console.log("allocationData", allocationData);
 
   return allocationDetailsQuery?.isLoading ? (
     <Center minH={"28vh"}>
