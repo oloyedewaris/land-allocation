@@ -7,6 +7,6 @@ const ENV_PREFIX =
         ? "api"
         : "dev";
 
-export const LOCAL_ESUB_DOMAIN = "graceland-country-view-3244-dev.6787878.com";
+export const LOCAL_ESUB_DOMAIN = "the-grand-estate-3431-dev.6787878.com";
 
 export const BaseURL = `https://${ENV_PREFIX}.matadortrust.com/v2`;
