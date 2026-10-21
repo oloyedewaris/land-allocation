@@ -1,7 +1,7 @@
 import type { BackendAllocation, EsubDetails } from "@/types/estate";
 import { BaseURL, LOCAL_ESUB_DOMAIN } from "./constants/auth-keys";
 
-const allocationsUrl = `${BaseURL}/developers/project-allocations-with-owner/3244/`;
+const allocationsUrl = `${BaseURL}/developers/project-allocations-with-owner/3431/`;
 const storeCheckUrl = `${BaseURL}/billing/esub/domain/${encodeURIComponent(LOCAL_ESUB_DOMAIN)}/`;
 
 interface AllocationResponse {
