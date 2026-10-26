@@ -56,9 +56,17 @@ interface EstateContextValue {
 
 const EstateContext = createContext<EstateContextValue | null>(null);
 
-export function EstateProvider({ children, allocations }: { children: ReactNode; allocations: BackendAllocation[] }) {
+export function EstateProvider({
+  children,
+  allocations,
+}: {
+  children: ReactNode;
+  allocations: BackendAllocation[];
+}) {
   const model = useMemo<EstateModel>(() => {
-    const allocationsByName = new Map(allocations.map((allocation) => [allocation.name, allocation]));
+    const allocationsByName = new Map(
+      allocations.map((allocation) => [allocation.name, allocation]),
+    );
     return {
       ...localModel,
       plots: localModel.plots.map((unit) => ({
@@ -67,12 +75,23 @@ export function EstateProvider({ children, allocations }: { children: ReactNode;
       })),
     };
   }, [allocations]);
-  const apiStatuses = useMemo(() => Object.fromEntries(model.plots.map((unit) => [
-    unit.id,
-    unit.allocation?.allocated ? "allocated" : "available",
-  ])) as Record<string, UnitStatus>, [model.plots]);
-  const [statusOverrides, setStatusOverrides] = useState<Record<string, UnitStatus>>({});
-  const statuses = useMemo(() => ({ ...apiStatuses, ...statusOverrides }), [apiStatuses, statusOverrides]);
+  const apiStatuses = useMemo(
+    () =>
+      Object.fromEntries(
+        model.plots.map((unit) => [
+          unit.id,
+          unit.allocation?.allocated ? "allocated" : "available",
+        ]),
+      ) as Record<string, UnitStatus>,
+    [model.plots],
+  );
+  const [statusOverrides, setStatusOverrides] = useState<
+    Record<string, UnitStatus>
+  >({});
+  const statuses = useMemo(
+    () => ({ ...apiStatuses, ...statusOverrides }),
+    [apiStatuses, statusOverrides],
+  );
   const [filters, setFilters] = useState(defaultFilters);
   const [selectedId, selectUnit] = useState<string | null>(null);
   const [admin, setAdmin] = useState(false);

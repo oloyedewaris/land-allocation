@@ -231,10 +231,9 @@ function PlotBoundaries({
       ? camera.position.distanceTo(controls.target)
       : camera.position.length();
     // Coarser steps prevent a React update for every tiny camera movement.
-    const nextWidth = Math.round(
-      THREE.MathUtils.clamp(20 / cameraDistance, 1, 10) * 2,
-    ) / 2;
-    setLineWidth((current) => current === nextWidth ? current : nextWidth);
+    const nextWidth =
+      Math.round(THREE.MathUtils.clamp(20 / cameraDistance, 1, 10) * 2) / 2;
+    setLineWidth((current) => (current === nextWidth ? current : nextWidth));
   });
 
   return (
@@ -406,9 +405,10 @@ function RoadMesh({ road, center }: { road: RoadSegment; center: Point }) {
   const shoulderWidth = (halfWidth + shoulder) * 2;
   const dashLength = 0.32;
   const dashGap = 0.22;
-  const dashCount = road[4] <= 1
-    ? Math.max(1, Math.floor((length + dashGap) / (dashLength + dashGap)))
-    : 0;
+  const dashCount =
+    road[4] <= 1
+      ? Math.max(1, Math.floor((length + dashGap) / (dashLength + dashGap)))
+      : 0;
   const dashes = useRef<THREE.InstancedMesh>(null);
   useEffect(() => {
     if (!dashes.current || dashCount === 0) return;
@@ -734,29 +734,38 @@ function EstateScene({
     () => visibleUnits.find((unit) => unit.id === hoveredUnitId),
     [hoveredUnitId, visibleUnits],
   );
-  const handleUnitHover = useCallback((id: string, position: HoverPosition) => {
-    if (hoverClearTimer.current) clearTimeout(hoverClearTimer.current);
-    hoverAnchor.current?.position.set(...position);
-    invalidate();
-    setHoveredUnitId((current) => current === id ? current : id);
-  }, [invalidate]);
+  const handleUnitHover = useCallback(
+    (id: string, position: HoverPosition) => {
+      if (hoverClearTimer.current) clearTimeout(hoverClearTimer.current);
+      hoverAnchor.current?.position.set(...position);
+      invalidate();
+      setHoveredUnitId((current) => (current === id ? current : id));
+    },
+    [invalidate],
+  );
   const handleUnitLeave = useCallback((id: string) => {
     if (hoverClearTimer.current) clearTimeout(hoverClearTimer.current);
     hoverClearTimer.current = setTimeout(() => {
-      setHoveredUnitId((current) => current === id ? null : current);
+      setHoveredUnitId((current) => (current === id ? null : current));
     }, 80);
   }, []);
   const clearPlotHover = useCallback(() => {
     if (hoverClearTimer.current) clearTimeout(hoverClearTimer.current);
     setHoveredUnitId(null);
   }, []);
-  const handleUnitSelect = useCallback((id: string) => {
-    setFocusedAmenity(null);
-    selectUnit(id);
-  }, [selectUnit, setFocusedAmenity]);
-  useEffect(() => () => {
-    if (hoverClearTimer.current) clearTimeout(hoverClearTimer.current);
-  }, []);
+  const handleUnitSelect = useCallback(
+    (id: string) => {
+      setFocusedAmenity(null);
+      selectUnit(id);
+    },
+    [selectUnit, setFocusedAmenity],
+  );
+  useEffect(
+    () => () => {
+      if (hoverClearTimer.current) clearTimeout(hoverClearTimer.current);
+    },
+    [],
+  );
   return (
     <>
       {view === "map" && <color attach="background" args={["#dad7ce"]} />}
@@ -797,20 +806,17 @@ function EstateScene({
       ))}
       <group ref={hoverAnchor}>
         {hoveredUnit && (
-          <Html
-          zIndexRange={[40, 0]}
-          style={{ pointerEvents: "none" }}
-        >
-          <div className="plot-tooltip" role="tooltip">
-            <div>
-              <strong>{hoveredUnit.id}</strong>
-              <span>{hoveredUnit.a.toLocaleString()} m²</span>
+          <Html zIndexRange={[40, 0]} style={{ pointerEvents: "none" }}>
+            <div className="plot-tooltip" role="tooltip">
+              <div>
+                <strong>{hoveredUnit.id}</strong>
+                <span>{hoveredUnit.a.toLocaleString()} m²</span>
+              </div>
+              <p>
+                {statuses[hoveredUnit.id][0].toUpperCase() +
+                  statuses[hoveredUnit.id].slice(1)}
+              </p>
             </div>
-            <p>
-              {statuses[hoveredUnit.id][0].toUpperCase() +
-                statuses[hoveredUnit.id].slice(1)}
-            </p>
-          </div>
           </Html>
         )}
       </group>
@@ -876,7 +882,8 @@ export function EstateCanvas({ esubDetails }: { esubDetails: EsubDetails }) {
         target instanceof HTMLTextAreaElement ||
         target instanceof HTMLSelectElement ||
         (target instanceof HTMLElement && target.isContentEditable)
-      ) return;
+      )
+        return;
       const action = keyboardActions[event.key];
       if (!action) return;
       event.preventDefault();

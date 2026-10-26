@@ -365,9 +365,8 @@ function SelectedUnitDetailsPanel({
           redirect_url: `https://${storename}.6787878.com`,
           store_name: storename,
           type: "WHOLE",
-          // allocation_id: allocationId,
+          allocation_id: allocation?.id,
         };
-
         paymentMutation.mutate(objToSubmit);
       }
     },
