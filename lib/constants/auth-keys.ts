@@ -7,6 +7,7 @@ const ENV_PREFIX =
         ? "api"
         : "dev";
 
-export const LOCAL_ESUB_DOMAIN = "bethel-gardens-3484-dev.6787878.com";
+export const LOCAL_ESUB_DOMAIN =
+  "downtown-lagos-commercial-city-phas-3485-dev.6787878.com";
 
 export const BaseURL = `https://${ENV_PREFIX}.matadortrust.com/v2`;
