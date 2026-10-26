@@ -1,4 +1,4 @@
-export const DEFAULT_STORE_NAME = "myxelliainc-dev";
+export const DEFAULT_STORE_NAME = "aceroyalestate-dev";
 
 export function store_name(): string {
   return DEFAULT_STORE_NAME;
